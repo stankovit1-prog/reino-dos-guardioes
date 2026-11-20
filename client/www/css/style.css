@@ -129,3 +129,6 @@ body.ingame #nav, body.ingame #topbar{display:none}
 
 .acc-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:6px 14px;font-size:13px;font-weight:700;margin-bottom:8px}
 .inp{width:100%;padding:10px;border-radius:10px;border:1px solid #6c5ce7;background:#1b1440;color:#fff;font:inherit;margin-top:6px}
+
+#topbar .snd-btn{flex:0 0 auto;width:40px;height:auto;border-radius:999px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.08);font-size:16px}
+.snd-btn{color:#fff;border:0;cursor:pointer}
