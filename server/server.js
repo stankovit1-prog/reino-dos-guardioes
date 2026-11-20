@@ -23,6 +23,9 @@ const PROD = process.env.NODE_ENV === 'production';
 const JWT_SECRET = process.env.JWT_SECRET;
 if (PROD && (!JWT_SECRET || JWT_SECRET.length < 32)) { console.error('Defina JWT_SECRET (32+ caracteres) no ambiente.'); process.exit(1); }
 const SECRET = JWT_SECRET || 'dev-secret-somente-para-testes-locais-0000';
+// PROTEÇÃO CONTRA PERDA DE DADOS: em produção o servidor SÓ liga com o banco na nuvem (Neon).
+// Sem ele, preferimos não abrir o jogo a usar um arquivo temporário que seria apagado no reinício.
+if (PROD && !process.env.DATABASE_URL) { console.error('DATABASE_URL não definido: o servidor não vai ligar para não perder contas.'); process.exit(1); }
 // IDs de cliente OAuth do Google (web e Android), separados por vírgula
 const GOOGLE_CLIENT_IDS = (process.env.GOOGLE_CLIENT_ID || '').split(',').map(s => s.trim()).filter(Boolean);
 const googleAuth = new OAuth2Client();
