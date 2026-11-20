@@ -21,3 +21,7 @@ services:
         sync: false
       - key: GOOGLE_CLIENT_ID    # ID do cliente OAuth do Google (Entrar com Google)
         sync: false
+      - key: ADMIN_IDS           # ID da SUA conta (aparece em 👤 Conta no jogo) = usuário mestre
+        sync: false
+      - key: ADMIN_EMAILS        # (opcional) seu e-mail do Google, para ser mestre ao entrar com Google
+        sync: false
