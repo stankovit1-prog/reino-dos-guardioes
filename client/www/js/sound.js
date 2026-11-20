@@ -11,27 +11,35 @@
   // modo: 2 = som + música, 1 = só efeitos, 0 = mudo
   let mode = LS.get('rg_sound') === null ? 2 : Number(LS.get('rg_sound')) | 0;
   let ac = null, master, sfxBus, musBus, noiseBuf, unlocked = false;
+  const SFX_VOL = 2.2, MUS_VOL = 1.4;   // volumes (os sons são gerados baixinhos; aqui eles ganham força)
+  // iPhone/iPad: toca mesmo com a chave de silencioso ligada (como app de música/jogo)
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
 
   function init() {
     if (ac) return ac;
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return null;
     ac = new AC();
-    master = ac.createGain(); master.gain.value = 0.9;
-    const comp = ac.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 6;
+    master = ac.createGain(); master.gain.value = 1.0;
+    const comp = ac.createDynamicsCompressor(); comp.threshold.value = -20; comp.ratio.value = 4; comp.knee.value = 10;
     master.connect(comp); comp.connect(ac.destination);
-    sfxBus = ac.createGain(); sfxBus.gain.value = mode >= 1 ? 0.55 : 0; sfxBus.connect(master);
-    musBus = ac.createGain(); musBus.gain.value = mode === 2 ? 0.32 : 0; musBus.connect(master);
+    sfxBus = ac.createGain(); sfxBus.gain.value = mode >= 1 ? SFX_VOL : 0; sfxBus.connect(master);
+    musBus = ac.createGain(); musBus.gain.value = mode === 2 ? MUS_VOL : 0; musBus.connect(master);
     noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
     const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     return ac;
   }
   function unlock() {
     if (!init()) return;
-    if (ac.state === 'suspended') ac.resume();
-    if (!unlocked) { unlocked = true; if (wantTheme !== null) startMusic(wantTheme); }
+    if (ac.state !== 'running') ac.resume();
+    if (!unlocked) {
+      unlocked = true;
+      // truque para iPhone antigo: um som vazio dentro do toque "acorda" o áudio
+      try { const b = ac.createBufferSource(); b.buffer = ac.createBuffer(1, 1, 22050); b.connect(ac.destination); b.start(0); } catch (e) {}
+      if (wantTheme !== null) startMusic(wantTheme);
+    }
   }
-  ['pointerdown', 'keydown', 'touchstart'].forEach(e => window.addEventListener(e, unlock, { passive: true, capture: true }));
+  ['pointerdown', 'pointerup', 'keydown', 'touchstart', 'touchend', 'click'].forEach(e => window.addEventListener(e, unlock, { passive: true, capture: true }));
   document.addEventListener('visibilitychange', () => { if (!ac) return; if (document.hidden) ac.suspend(); else if (unlocked) ac.resume(); });
 
   // ---------- blocos de som ----------
@@ -186,13 +194,13 @@
   const ICON = ['🔇', '🔉', '🔊'], TXT = ['Som desligado', 'Só efeitos (sem música)', 'Som e música ligados'];
   function setMode(m) {
     mode = m; LS.set('rg_sound', String(m));
-    if (ac) { sfxBus.gain.value = m >= 1 ? 0.55 : 0; musBus.gain.value = m === 2 ? 0.32 : 0; }
+    if (ac) { sfxBus.gain.value = m >= 1 ? SFX_VOL : 0; musBus.gain.value = m === 2 ? MUS_VOL : 0; }
     document.querySelectorAll('.snd-btn').forEach(b => { b.textContent = ICON[m]; b.title = TXT[m]; });
   }
   function button() {
     const b = document.createElement('button');
     b.className = 'snd-btn icon'; b.type = 'button'; b.textContent = ICON[mode]; b.title = TXT[mode];
-    b.addEventListener('click', (e) => { e.stopPropagation(); unlock(); setMode((mode + 2) % 3); if (window.__toast) window.__toast(ICON[mode] + ' ' + TXT[mode]); if (mode) FX.ui(); });
+    b.addEventListener('click', (e) => { e.stopPropagation(); unlock(); setMode((mode + 2) % 3); if (window.__toast) window.__toast(ICON[mode] + ' ' + TXT[mode]); if (mode) setTimeout(() => FX.coin(), 50); });
     return b;
   }
   // som de clique em qualquer botão do jogo
@@ -204,5 +212,6 @@
     card,
     music(themeIdx, inBattle) { battle = !!inBattle; startMusic(themeIdx); },
     button, setMode, get mode() { return mode; },
+    get state() { return ac ? ac.state : 'sem-audio'; },
   };
 })();
