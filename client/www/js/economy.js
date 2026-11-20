@@ -18,6 +18,19 @@
       secrets: {}, gemSpots: {}, cards: {}, freeChestAt: now };   // secrets[fase] = 'found' (liberada) | 'done' (já jogada)
   }
 
+  // SAVE À PROVA DE ATUALIZAÇÃO: quando o jogo ganha campos novos (mapas, itens...),
+  // contas antigas recebem só o que falta. Nada que o jogador já tem é apagado ou zerado.
+  const SAVE_VERSION = 2;
+  function migrate(p, now) {
+    const base = newPlayer(now || Date.now());
+    for (const k in base) if (p[k] === undefined || p[k] === null) p[k] = base[k];
+    for (const k of ['stars', 'perm', 'bought', 'secrets', 'gemSpots', 'cards']) if (typeof p[k] !== 'object') p[k] = {};
+    if (!Array.isArray(p.unlocked)) p.unlocked = [];
+    if (!p.daily || typeof p.daily !== 'object') p.daily = { last: -1, streak: 0 };
+    p.v = SAVE_VERSION;
+    return p;
+  }
+
   function refreshEnergy(p, now) {
     if (p.energy >= E.ENERGY_MAX) { p.energyAt = now; return; }
     const per = E.ENERGY_REGEN_MIN * 60000;
@@ -286,5 +299,5 @@
     p.gems = Math.max(0, p.gems - it.gems);
   }
 
-  return { cardOffers, buyOffer, dailyReward, openChest, rollChest, owns, unlockedFor, newPlayer, publicView, startLevel, finishLevel, upgrade, buyShop, claimDaily, grantIap, revokeIap, refreshEnergy };
+  return { giveChest, migrate, SAVE_VERSION, cardOffers, buyOffer, dailyReward, openChest, rollChest, owns, unlockedFor, newPlayer, publicView, startLevel, finishLevel, upgrade, buyShop, claimDaily, grantIap, revokeIap, refreshEnergy };
 });
