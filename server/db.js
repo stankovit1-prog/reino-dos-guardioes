@@ -13,7 +13,10 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS runs (id TEXT PRIMARY KEY, player TEXT, cfg TEXT, started BIGINT, done INTEGER DEFAULT 0)`,
   // TODAS as compras (Google Play, PIX, cartão) ficam registradas aqui, ligadas à conta
   `CREATE TABLE IF NOT EXISTS purchases (token TEXT PRIMARY KEY, player TEXT, product TEXT, order_id TEXT, at BIGINT, state TEXT, test INTEGER, provider TEXT, amount TEXT)`,
+  // configurações ao vivo do jogo (editadas no painel do mestre)
+  `CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`,
 ];
+const brief = (r) => { const d = typeof r.data === 'string' ? JSON.parse(r.data) : r.data; return { id: r.id, name: d.name, email: d.email || null, maxLevel: d.maxLevel | 0, coins: d.coins | 0, gems: d.gems | 0, created: Number(r.created), banned: !!Number(r.banned), cheats: Number(r.cheats) | 0 }; };
 
 /* ------------------------------ SQLite ------------------------------ */
 function sqliteStore(file) {
@@ -64,6 +67,21 @@ function sqliteStore(file) {
     // muda o estado só se estiver no estado esperado (evita entregar 2 vezes)
     async swapPurchaseState(token, from, to) { return run('UPDATE purchases SET state = ? WHERE token = ? AND state = ?', to, token, from).changes === 1; },
     async purchasesOf(player) { return db.prepare('SELECT token, product, at, state, provider, amount FROM purchases WHERE player = ? ORDER BY at DESC LIMIT 50').all(player); },
+    // ----- painel do mestre -----
+    async getSetting(k) { const r = one('SELECT value FROM settings WHERE key = ?', k); return r ? JSON.parse(r.value) : null; },
+    async setSetting(k, v) { run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', k, JSON.stringify(v)); },
+    async setBanned(id, v) { run('UPDATE players SET banned = ?, cheats = CASE WHEN ? = 0 THEN 0 ELSE cheats END WHERE id = ?', v ? 1 : 0, v ? 1 : 0, id); },
+    async listPlayers(q, limit) {
+      const like = '%' + String(q || '').toLowerCase() + '%';
+      return db.prepare('SELECT * FROM players WHERE ? = \'%%\' OR lower(id) LIKE ? OR lower(data) LIKE ? ORDER BY created DESC LIMIT ?').all(like, like, like, limit).map(brief);
+    },
+    async allPurchases(limit) { return db.prepare('SELECT player, product, at, state, provider, amount FROM purchases ORDER BY at DESC LIMIT ?').all(limit); },
+    async stats(since) {
+      return { players: one('SELECT COUNT(*) n FROM players').n, newPlayers: one('SELECT COUNT(*) n FROM players WHERE created >= ?', since).n,
+        sales: one("SELECT COUNT(*) n, COALESCE(SUM(CAST(amount AS REAL)), 0) s FROM purchases WHERE state = 'ok'"),
+        salesToday: one("SELECT COUNT(*) n, COALESCE(SUM(CAST(amount AS REAL)), 0) s FROM purchases WHERE state = 'ok' AND at >= ?", since),
+        banned: one('SELECT COUNT(*) n FROM players WHERE banned = 1').n };
+    },
   };
 }
 
@@ -114,6 +132,23 @@ function pgStore(pool) {
     },
     async swapPurchaseState(token, from, to) { return (await q('UPDATE purchases SET state = $1 WHERE token = $2 AND state = $3 RETURNING token', [to, token, from])).rows.length === 1; },
     async purchasesOf(player) { return (await q('SELECT token, product, at, state, provider, amount FROM purchases WHERE player = $1 ORDER BY at DESC LIMIT 50', [player])).rows; },
+    // ----- painel do mestre -----
+    async getSetting(k) { const r = (await q('SELECT value FROM settings WHERE key = $1', [k])).rows[0]; return r ? JSON.parse(r.value) : null; },
+    async setSetting(k, v) { await q('DELETE FROM settings WHERE key = $1', [k]); await q('INSERT INTO settings (key, value) VALUES ($1, $2)', [k, JSON.stringify(v)]); },
+    async setBanned(id, v) { await q('UPDATE players SET banned = $1, cheats = CASE WHEN $1 = 0 THEN 0 ELSE cheats END WHERE id = $2', [v ? 1 : 0, id]); },
+    async listPlayers(qs, limit) {
+      const like = '%' + String(qs || '').toLowerCase() + '%';
+      return (await q("SELECT * FROM players WHERE $1 = '%%' OR lower(id) LIKE $1 OR lower(data) LIKE $1 ORDER BY created DESC LIMIT $2", [like, limit])).rows.map(brief);
+    },
+    async allPurchases(limit) { return (await q('SELECT player, product, at, state, provider, amount FROM purchases ORDER BY at DESC LIMIT $1', [limit])).rows; },
+    async stats(since) {
+      const n = async (sql, a) => Number((await q(sql, a)).rows[0].n);
+      const sum = async (sql, a) => { const r = (await q(sql, a)).rows[0]; return { n: Number(r.n), s: Number(r.s) }; };
+      return { players: await n('SELECT COUNT(*) n FROM players'), newPlayers: await n('SELECT COUNT(*) n FROM players WHERE created >= $1', [since]),
+        sales: await sum("SELECT COUNT(*) n, COALESCE(SUM(CASE WHEN amount IS NULL OR amount = '' THEN 0 ELSE CAST(amount AS NUMERIC) END), 0) s FROM purchases WHERE state = 'ok'"),
+        salesToday: await sum("SELECT COUNT(*) n, COALESCE(SUM(CASE WHEN amount IS NULL OR amount = '' THEN 0 ELSE CAST(amount AS NUMERIC) END), 0) s FROM purchases WHERE state = 'ok' AND at >= $1", [since]),
+        banned: await n('SELECT COUNT(*) n FROM players WHERE banned = 1') };
+    },
   };
 }
 
