@@ -406,7 +406,10 @@ app.post('/api/admin/live', adminOnly, wrap(async (req, res) => {
 }));
 
 // O próprio servidor entrega o JOGO (site): pasta client/www
-app.use(express.static(path.join(__dirname, '..', 'client', 'www'), { maxAge: PROD ? '1h' : 0 }));
+// Atualizações chegam na hora: o navegador sempre confere se o jogo mudou (ícones podem ficar guardados)
+app.use(express.static(path.join(__dirname, '..', 'client', 'www'), { setHeaders(res, file) {
+  res.setHeader('Cache-Control', /\.(png|jpg|webp|svg)$/.test(file) ? 'public, max-age=604800' : 'no-cache');
+} }));
 
 if (require.main === module) ready.then(() => app.listen(PORT, () => console.log(`Servidor na porta ${PORT} · banco: ${store.kind}${play.enabled ? '' : ' · Google Play não configurado'}${mp.enabled ? ' · Mercado Pago OK' : ''}`)), (e) => { console.error('Falha no banco de dados:', e.message); process.exit(1); });
 module.exports = { app, db: store.raw, store, ready };
