@@ -1,0 +1,20 @@
+{
+  "name": "reino-dos-guardioes",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "sync-shared": "node -e \"for(const f of ['sim.js','economy.js'])require('fs').copyFileSync('../shared/'+f,'www/js/'+f)\"",
+    "android:init": "npm run sync-shared && npx cap add android",
+    "android:sync": "npm run sync-shared && npx cap sync android",
+    "android:open": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "cordova-plugin-purchase": "^13.12.0",
+    "@capgo/capacitor-social-login": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.0.0"
+  }
+}

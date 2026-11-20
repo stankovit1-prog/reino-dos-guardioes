@@ -1,0 +1,23 @@
+# Render: cria o servidor do jogo (site + API) no plano GRATUITO.
+# No Render: New > Blueprint > escolha este repositório.
+services:
+  - type: web
+    name: reino-guardioes
+    runtime: node
+    plan: free
+    buildCommand: cd server && npm install --omit=dev
+    startCommand: node server/server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL        # endereço do banco Neon (Postgres grátis)
+        sync: false
+      - key: PUBLIC_URL          # ex.: https://reino-guardioes.onrender.com
+        sync: false
+      - key: MP_ACCESS_TOKEN     # token de produção do Mercado Pago (PIX e cartão)
+        sync: false
+      - key: GOOGLE_CLIENT_ID    # ID do cliente OAuth do Google (Entrar com Google)
+        sync: false

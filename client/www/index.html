@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1b1440">
+<title>Reino dos Guardiões</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+</head>
+<body>
+<div id="app">
+  <!-- Barra de recursos -->
+  <header id="topbar">
+    <div class="res" id="r-energy"><span>⚡</span><b id="v-energy">10</b><small id="v-energy-t"></small></div>
+    <div class="res"><span>🪙</span><b id="v-coins">0</b></div>
+    <div class="res gem" data-go="shop"><span>💎</span><b id="v-gems">0</b><i>+</i></div>
+  </header>
+
+  <!-- TELA: Fases -->
+  <section id="s-home" class="screen active">
+    <div class="hero">
+      <h1>Reino dos<br><span>Guardiões</span></h1>
+      <p id="hello">Defenda o reino!</p>
+      <button id="acc-btn" class="acc-btn">👤 Conta</button>
+    </div>
+    <button id="daily-btn" class="daily hidden">🎁 Recompensa diária disponível!</button>
+    <button id="free-chest" class="free-chest">📦 <span id="free-chest-t">Baú grátis</span></button>
+    <div id="levels"></div>
+  </section>
+
+  <!-- TELA: Melhorias -->
+  <section id="s-upgrades" class="screen">
+    <h2>🃏 Cartas de Armas</h2>
+    <p class="sub">Junte cartas nos baús para liberar armas novas e melhorar as suas (cartas + moedas).</p>
+    <div id="rar-legend"></div>
+    <div id="up-list"></div>
+  </section>
+
+  <!-- TELA: Loja -->
+  <section id="s-shop" class="screen">
+    <h2>Loja</h2>
+    <div id="starter"></div>
+    <h3>🃏 Cartas do Dia <small style="font-weight:400">(mudam todo dia)</small></h3>
+    <div id="offer-list" class="offers"></div>
+    <h3>🎁 Baús de cartas</h3>
+    <div id="chest-list" class="grid"></div>
+    <h3>💎 Gemas</h3>
+    <div id="iap-list" class="grid"></div>
+    <h3>Trocar gemas</h3>
+    <div id="shop-list" class="grid"></div>
+    <p class="sub tiny" id="pay-note"></p>
+  </section>
+
+  <!-- TELA: Partida -->
+  <section id="s-game" class="screen">
+    <div id="hud">
+      <button id="g-exit" class="icon">✕</button>
+      <div class="hud-item">❤️ <b id="g-lives">20</b></div>
+      <div class="hud-item">🪙 <b id="g-gold">0</b></div>
+      <div class="hud-item"><span id="g-wave-i">🌊</span> <b id="g-wave">0/0</b></div>
+      <button id="g-speed" class="icon">1x</button>
+    </div>
+    <div id="canvas-wrap"><canvas id="cv"></canvas>
+      <button id="g-next" class="next">▶ Chamar onda <small id="g-next-t"></small></button>
+    </div>
+    <div id="panel"></div>
+  </section>
+
+  <nav id="nav">
+    <button data-go="home" class="on">🗺️<span>Fases</span></button>
+    <button data-go="upgrades">🃏<span>Cartas</span></button>
+    <button data-go="shop">🛒<span>Loja</span></button>
+  </nav>
+
+  <div id="modal" class="hidden"><div class="box" id="modal-box"></div></div>
+  <div id="toast"></div>
+  <div id="loading"><div class="spin"></div><p>Conectando ao reino…</p></div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/sim.js"></script>
+<script src="js/economy.js"></script>
+<script src="js/api.js"></script>
+<script src="js/billing.js"></script>
+<script src="js/monsters.js"></script>
+<script src="js/game.js"></script>
+<script src="js/pwa.js"></script>
+</body>
+</html>
