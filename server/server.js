@@ -29,11 +29,23 @@ const googleAuth = new OAuth2Client();
 const secureRand = () => crypto.randomInt(0, 1000000000) / 1000000000;
 
 const store = createStore();
-const ready = store.init();
+const ready = store.init().then(loadLive);
+
+// ---------- USUÁRIO MESTRE ----------
+// Só quem estiver nestas listas (configuradas no Render, nunca no código) vê o painel.
+//   ADMIN_EMAILS = seu e-mail do Google (vale quando você entra com Google no jogo)
+//   ADMIN_IDS    = ID da sua conta (aparece em 👤 Conta) — funciona mesmo sem login Google
+const envList = (k) => (process.env[k] || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+const isAdmin = (pid, data) => envList('ADMIN_IDS').includes(String(pid).toLowerCase()) || (!!data && !!data.email && envList('ADMIN_EMAILS').includes(String(data.email).toLowerCase()));
+
+// ---------- CONFIGURAÇÕES AO VIVO (o mestre muda pelo painel, sem atualizar o app) ----------
+const LIVE_DEFAULT = { coinMul: 1, gemMul: 1, news: '', maint: false, gift: null };
+let LIVE = Object.assign({}, LIVE_DEFAULT);
+async function loadLive() { LIVE = Object.assign({}, LIVE_DEFAULT, (await store.getSetting('live')) || {}); }
 
 // Executa uma alteração no jogador de forma atômica e devolve a visão pública
 async function mutate(id, fn) {
-  const out = await store.withPlayer(id, fn);
+  const out = await store.withPlayer(id, (p, r) => { Eco.migrate(p, Date.now()); return fn(p, r); });
   const p = out.__p; delete out.__p;
   if (p) out.player = Eco.publicView(p, Date.now());
   return out;
@@ -79,10 +91,25 @@ function auth(req, res, next) {
     next();
   })().catch(e => { console.error(e); res.status(500).json({ error: 'Erro no servidor' }); });
 }
+// Ao entrar: entrega presente do mestre (1x por conta), aviso do dia e marca se é o mestre
+async function welcome(pid) {
+  const out = await mutate(pid, (p) => {
+    const r = { ok: true };
+    const g = LIVE.gift;
+    if (g && g.id && p.giftSeen !== g.id) {
+      p.giftSeen = g.id; p.coins += g.coins | 0; p.gems += g.gems | 0;
+      r.gift = { coins: g.coins | 0, gems: g.gems | 0, msg: g.msg || '' };
+    }
+    if (isAdmin(pid, p)) r.isAdmin = true;
+    return r;
+  });
+  if (LIVE.news) out.news = LIVE.news;
+  return out;
+}
 async function loginResponse(pid, extra) {
   const row = await store.getPlayer(pid);
-  if (row.banned) return { error: 'Conta suspensa por trapaça' };
-  return Object.assign({ token: tokenFor(pid), playerId: pid, player: Eco.publicView(row.data, Date.now()) }, extra || {});
+  if (row.banned) return { error: 'Conta suspensa' };
+  return Object.assign(await welcome(pid), { token: tokenFor(pid), playerId: pid }, extra || {});
 }
 const validDevice = (d) => /^[a-zA-Z0-9-]{32,64}$/.test(d);
 
@@ -148,15 +175,16 @@ app.post('/api/auth/recover', rateLimit({ windowMs: 3600000, limit: 10 }), wrap(
 }));
 app.get('/api/account', auth, wrap(async (req, res) => {
   const ids = await store.identitiesOf(req.pid), row = await store.getPlayer(req.pid);
-  res.json({ ok: true, google: ids.some(i => i.kind === 'google') ? (row.data.email || 'conectado') : null, hasCode: ids.some(i => i.kind === 'code'),
+  res.json({ ok: true, id: req.pid, google: ids.some(i => i.kind === 'google') ? (row.data.email || 'conectado') : null, hasCode: ids.some(i => i.kind === 'code'),
     purchases: (await store.purchasesOf(req.pid)).map(x => ({ product: x.product, at: Number(x.at), state: x.state, provider: x.provider })) });
 }));
 
 // =================== JOGO ===================
-app.get('/api/me', auth, wrap(async (req, res) => send(res, await mutate(req.pid, () => ({ ok: true })))));
+app.get('/api/me', auth, wrap(async (req, res) => send(res, Object.assign(await welcome(req.pid), { playerId: req.pid }))));
 
 app.post('/api/level/start', auth, wrap(async (req, res) => {
   let cfg;
+  if (LIVE.maint) { const row = await store.getPlayer(req.pid); if (!isAdmin(req.pid, row.data)) return res.status(503).json({ error: '🛠️ Jogo em manutenção. Volte em alguns minutos!' }); }
   const out = await mutate(req.pid, (p) => { const r = Eco.startLevel(p, req.body.level, Date.now(), !!req.body.bonus); if (r.error) return r; cfg = r.cfg; return { ok: true }; });
   if (out.error) return send(res, out);
   const runId = crypto.randomUUID();
@@ -167,7 +195,15 @@ app.post('/api/level/start', auth, wrap(async (req, res) => {
 app.post('/api/level/finish', auth, wrap(async (req, res) => {
   const run = await store.takeRun(String(req.body.runId || ''), req.pid);    // não dá pra enviar 2x
   if (!run) return res.status(400).json({ error: 'Partida não encontrada' });
-  const out = await mutate(req.pid, (p) => Eco.finishLevel(p, { cfg: run.cfg, startedAt: Number(run.started) }, req.body.actions, Date.now(), secureRand));
+  const out = await mutate(req.pid, (p) => {
+    const r = Eco.finishLevel(p, { cfg: run.cfg, startedAt: Number(run.started) }, req.body.actions, Date.now(), secureRand);
+    // EVENTO do mestre: moedas/gemas em dobro (ou mais) nas fases
+    if (r.ok && r.status === 'won') {
+      const ec = Math.floor((r.coins | 0) * (LIVE.coinMul - 1)), eg = Math.floor((r.gems | 0) * (LIVE.gemMul - 1));
+      if (ec > 0 || eg > 0) { p.coins += ec; p.gems += eg; r.coins += ec; r.gems += eg; r.event = true; }
+    }
+    return r;
+  });
   if (out.cheat) { await store.addCheat(req.pid); console.warn('[anti-hack]', req.pid, out.error); }
   send(res, out);
 }));
@@ -277,6 +313,94 @@ async function checkRefunds() {
   } catch (e) { console.warn('[iap] checkRefunds:', e.message); }
 }
 if (play.enabled) setInterval(checkRefunds, 6 * 3600000);
+
+// =================== PAINEL DO MESTRE ===================
+// Para quem NÃO é o mestre, estas rotas respondem "não encontrado" (nem dá pra saber que existem).
+function adminOnly(req, res, next) {
+  auth(req, res, () => {
+    store.getPlayer(req.pid).then(row => {
+      if (!isAdmin(req.pid, row.data)) return res.status(404).json({ error: 'Não encontrado' });
+      next();
+    }, e => { console.error(e); res.status(500).json({ error: 'Erro no servidor' }); });
+  });
+}
+const num = (v, max) => Math.max(0, Math.min(max, Math.floor(Number(v) || 0)));
+const TOTAL_LEVELS = Sim.WORLDS.length * Sim.LEVELS_PER_WORLD;
+
+app.get('/api/admin/overview', adminOnly, wrap(async (req, res) => {
+  const since = Date.now() - 86400000;
+  res.json({ ok: true, stats: await store.stats(since), live: LIVE, sales: await store.allPurchases(40), banco: store.kind,
+    game: { worlds: Sim.WORLDS.map(w => w.name), levels: TOTAL_LEVELS, weapons: Sim.TOWER_IDS.length, chests: Object.keys(Sim.ECON.CHESTS), products: Sim.ECON.IAP } });
+}));
+app.get('/api/admin/players', adminOnly, wrap(async (req, res) => {
+  res.json({ ok: true, players: await store.listPlayers(String(req.query.q || '').slice(0, 60), 60) });
+}));
+app.get('/api/admin/player/:id', adminOnly, wrap(async (req, res) => {
+  const row = await store.getPlayer(String(req.params.id));
+  if (!row) return res.status(404).json({ error: 'Jogador não encontrado' });
+  res.json({ ok: true, id: row.id, banned: !!Number(row.banned), cheats: Number(row.cheats) | 0, created: Number(row.created), data: row.data,
+    logins: (await store.identitiesOf(row.id)).map(i => i.kind), purchases: await store.purchasesOf(row.id) });
+}));
+app.post('/api/admin/player/:id', adminOnly, wrap(async (req, res) => {
+  const id = String(req.params.id), b = req.body || {};
+  if (!(await store.getPlayer(id))) return res.status(404).json({ error: 'Jogador não encontrado' });
+  if (b.op === 'ban') { await store.setBanned(id, !!b.v); console.log('[mestre]', req.pid, 'ban', id, !!b.v); return res.json({ ok: true }); }
+  const out = await mutate(id, (p) => {
+    switch (b.op) {
+      case 'set':          // define valores exatos
+        if (b.coins !== undefined) p.coins = num(b.coins, 1e9);
+        if (b.gems !== undefined) p.gems = num(b.gems, 1e9);
+        if (b.energy !== undefined) { p.energy = num(b.energy, 999); p.energyAt = Date.now(); }
+        if (b.maxLevel !== undefined) p.maxLevel = num(b.maxLevel, TOTAL_LEVELS);
+        if (b.name) { p.name = String(b.name).replace(/[^\p{L}\p{N} _-]/gu, '').slice(0, 16) || p.name; p.nameSet = true; }
+        return { ok: true };
+      case 'add':          // soma (pode ser negativo para retirar)
+        p.coins = Math.max(0, Math.min(1e9, p.coins + (Number(b.coins) | 0)));
+        p.gems = Math.max(0, Math.min(1e9, p.gems + (Number(b.gems) | 0)));
+        return { ok: true };
+      case 'chest': {
+        if (!Sim.ECON.CHESTS[b.type]) return { error: 'Baú inválido' };
+        const n = Math.max(1, Math.min(50, Number(b.n) | 0 || 1)), got = [];
+        for (let i = 0; i < n; i++) got.push(Eco.giveChest(p, b.type, secureRand));
+        return { ok: true, chests: got };
+      }
+      case 'cards':        // dar cartas de uma arma (ou de todas)
+        p.cards = p.cards || {};
+        for (const k of (b.k === '*' ? Sim.TOWER_IDS : [String(b.k)])) {
+          if (!Sim.TOWERS[k]) return { error: 'Arma inválida' };
+          if (!Eco.owns(p, k)) p.unlocked.push(k);
+          p.cards[k] = (p.cards[k] | 0) + num(b.n, 100000);
+        }
+        return { ok: true };
+      case 'unlockAll':    // libera todas as armas e fases
+        for (const k of Sim.TOWER_IDS) if (!Eco.owns(p, k)) p.unlocked.push(k);
+        p.maxLevel = TOTAL_LEVELS;
+        return { ok: true };
+      case 'reset': {      // começa do zero (mantém nome, e-mail e compras registradas)
+        const keep = { name: p.name, nameSet: p.nameSet, email: p.email };
+        for (const k of Object.keys(p)) delete p[k];
+        Object.assign(p, Eco.newPlayer(Date.now()), keep);
+        return { ok: true };
+      }
+      default: return { error: 'Ação inválida' };
+    }
+  });
+  console.log('[mestre]', req.pid, b.op, id);
+  send(res, out);
+}));
+app.post('/api/admin/live', adminOnly, wrap(async (req, res) => {
+  const b = req.body || {}, nx = Object.assign({}, LIVE);
+  if (b.coinMul !== undefined) nx.coinMul = Math.max(1, Math.min(10, Number(b.coinMul) || 1));
+  if (b.gemMul !== undefined) nx.gemMul = Math.max(1, Math.min(10, Number(b.gemMul) || 1));
+  if (b.news !== undefined) nx.news = String(b.news).slice(0, 300);
+  if (b.maint !== undefined) nx.maint = !!b.maint;
+  if (b.gift === null) nx.gift = null;
+  else if (b.gift) nx.gift = { id: crypto.randomUUID(), coins: num(b.gift.coins, 1e6), gems: num(b.gift.gems, 1e5), msg: String(b.gift.msg || '').slice(0, 120) };
+  await store.setSetting('live', nx);
+  LIVE = nx;
+  console.log('[mestre]', req.pid, 'config ao vivo', JSON.stringify(nx));
+  res.json({ ok: true, live: LIVE });
+}));
 
 // O próprio servidor entrega o JOGO (site): pasta client/www
 app.use(express.static(path.join(__dirname, '..', 'client', 'www'), { maxAge: PROD ? '1h' : 0 }));
