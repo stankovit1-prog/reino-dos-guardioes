@@ -13,7 +13,18 @@
   function modal(html) { $('modal-box').innerHTML = html; $('modal').classList.remove('hidden'); }
   function closeModal() { $('modal').classList.add('hidden'); }
   window.closeModal = closeModal;
-  function setPlayer(out) { if (out && out.player) { P = out.player; renderTop(); } return out; }
+  function setPlayer(out) {
+    if (out && out.player) { P = out.player; renderTop(); }
+    return out;
+  }
+  // Aviso do mestre, presente para todos e botão do painel (só aparece para o mestre)
+  function liveInfo(out) {
+    const ab = $('admin-btn'); if (ab) ab.classList.toggle('hidden', !out.isAdmin);
+    const nb = $('news-bar'); if (nb) { nb.textContent = out.news ? '📢 ' + out.news : ''; nb.classList.toggle('hidden', !out.news); }
+    if (out.gift) setTimeout(() => modal(`<h2>🎁 Presente!</h2><p>${(out.gift.msg || 'Um presente do Reino para você!').replace(/[<>&]/g, '')}</p>
+      <div class="news" style="text-align:center;font-size:20px;font-weight:800">${out.gift.coins ? '🪙 ' + out.gift.coins + ' ' : ''}${out.gift.gems ? '💎 ' + out.gift.gems : ''}</div>
+      <button class="btn gold" onclick="closeModal()" style="width:100%">Obrigado!</button>`), 600);
+  }
   async function act(promise) {
     if (busy) return {}; busy = true;
     try { const out = setPlayer(await promise); if (out.error) toast(out.error); return out; }
@@ -84,6 +95,7 @@
       ${a.google ? '' : `<div id="g-btn" style="display:flex;justify-content:center;margin:8px 0"></div>${gcid || API.demo ? '' : '<p class="tiny">(Login com Google ainda não configurado)</p>'}`}
       <button class="btn gold" id="m-code" style="width:100%;margin-top:6px">🔑 ${a.hasCode ? 'Gerar novo' : 'Criar'} código de recuperação</button>
       <button class="btn" id="m-rec" style="width:100%;margin-top:6px">📲 Recuperar conta com código</button>
+      ${a.id ? `<p class="tiny" style="margin-top:10px">ID da conta: <b style="user-select:all;-webkit-user-select:all">${a.id}</b></p>` : ''}
       ${a.purchases && a.purchases.length ? `<p class="tiny" style="margin-top:10px">Compras na conta: ${a.purchases.filter(x => x.state === 'ok').length}</p>` : ''}
       <button class="btn" onclick="closeModal()" style="width:100%;margin-top:8px;background:#555;box-shadow:none">Fechar</button>`);
     if (!a.google) googleButton($('g-btn'));
@@ -99,13 +111,13 @@
       modal(`<h2>📲 Recuperar conta</h2><p>Digite o código de recuperação:</p><input id="m-rc" class="inp" placeholder="RG-XXXX-XXXX-XXXX" style="text-transform:uppercase;text-align:center;font-size:18px">
         <p class="tiny">⚠️ O progresso de convidado deste aparelho será trocado pela conta do código.</p>
         <button class="btn gold" id="m-rgo" style="width:100%">Entrar</button><button class="btn" onclick="closeModal()" style="width:100%;margin-top:6px;background:#555;box-shadow:none">Cancelar</button>`);
-      $('m-rgo').onclick = async () => { const o = await act(API.recover($('m-rc').value)); if (o.ok !== false && o.token) { closeModal(); toast('Conta recuperada! 🎉'); go('home'); } };
+      $('m-rgo').onclick = async () => { const o = await act(API.recover($('m-rc').value)); if (o.ok !== false && o.token) { liveInfo(o); closeModal(); toast('Conta recuperada! 🎉'); go('home'); } };
     };
   }
   // Botão "Entrar com Google": no site usa Google Identity; no app Android usa o plugin de login
   async function googleButton(el) {
     const gcid = (window.GAME_CONFIG || {}).GOOGLE_CLIENT_ID;
-    const done = async (idToken) => { const o = await act(API.google(idToken)); if (o.token) { closeModal(); toast(o.linked ? 'Conta Google conectada! Seu progresso está salvo ☁️' : 'Bem-vindo de volta! Conta carregada ☁️'); go('home'); } };
+    const done = async (idToken) => { const o = await act(API.google(idToken)); if (o.token) { liveInfo(o); closeModal(); toast(o.linked ? 'Conta Google conectada! Seu progresso está salvo ☁️' : 'Bem-vindo de volta! Conta carregada ☁️'); go('home'); } };
     const cap = window.Capacitor;
     if (cap && cap.isNativePlatform && cap.isNativePlatform()) {
       const SL = cap.Plugins && cap.Plugins.SocialLogin;
@@ -1240,7 +1252,7 @@
   (async function boot() {
     const out = await API.init();
     if (out.error) { $('loading').querySelector('p').textContent = out.error + ' — toque para tentar de novo'; $('loading').onclick = () => location.reload(); return; }
-    setPlayer(out);
+    setPlayer(out); liveInfo(out);
     try { await Billing.init(); } catch (e) { console.warn('billing', e); }
     if (API.demo) { const d = document.createElement('div'); d.className = 'demo-badge'; d.textContent = 'DEMO'; document.body.appendChild(d); }
     $('loading').classList.add('hidden');
