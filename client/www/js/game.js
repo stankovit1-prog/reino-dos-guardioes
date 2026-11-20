@@ -9,10 +9,13 @@
 
   // ---------------- utilidades de UI ----------------
   let toastT;
+  const SND = window.Sound || { shot() {}, fx() {}, card() {}, music() {} };
   function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2200); }
   function modal(html) { $('modal-box').innerHTML = html; $('modal').classList.remove('hidden'); }
   function closeModal() { $('modal').classList.add('hidden'); }
   window.closeModal = closeModal;
+  window.__toast = (m) => toast(m);
+  const homeMusic = () => SND.music(P ? Sim.worldInfo(Math.min(P.maxLevel + 1, Sim.WORLDS.length * Sim.LEVELS_PER_WORLD)).theme : -1, false);
   function setPlayer(out) {
     if (out && out.player) { P = out.player; renderTop(); }
     return out;
@@ -262,6 +265,7 @@
       }
       const c = cards[i];
       if (c.prize) {
+        SND.fx(c.prize === 'gold' ? 'coin' : 'gems');
         const z = PZ[c.prize];
         modal(`<div class="chest-open"><p class="tiny">${i + 1} de ${cards.length} · toque para continuar</p>
           <div class="reveal" style="--rc:${z[2]}">${c.jackpot ? '<span class="new">EM DOBRO!</span>' : ''}<div class="ti">${z[0]}</div><b>${z[1]}</b><h2 style="margin:6px 0 0">+${fmt(c.n)}</h2></div>
@@ -270,13 +274,14 @@
         return;
       }
       const t = T[c.k];
+      SND.card(c.rar);
       modal(`<div class="chest-open"><p class="tiny">${i + 1} de ${cards.length} · toque para continuar</p>
         <div class="reveal ${c.rar === 'divina' ? 'divina' : ''}" style="--rc:${R[c.rar].color}">${c.isNew ? '<span class="new">NOVA ARMA!</span>' : ''}<div class="ti">${t.icon}</div><b>${t.name}</b><small>${R[c.rar].name}</small><h2 style="margin:6px 0 0">x${c.n}</h2></div>
         ${c.rar !== 'comum' ? `<p style="color:${R[c.rar].color};font-weight:800">✨ ${R[c.rar].name.toUpperCase()}! ✨</p>` : ''}</div>`);
       $('modal-box').onclick = () => { $('modal-box').onclick = null; step(); };
     };
     modal(`<div class="chest-open"><h2>${C.name}</h2><div class="chest-big" id="m-chest">${C.icon}</div><p>Toque no baú para abrir!</p></div>`);
-    $('m-chest').onclick = (ev) => { ev.stopPropagation(); step(); };
+    $('m-chest').onclick = (ev) => { ev.stopPropagation(); SND.fx('chest'); setTimeout(step, 350); };
   }
   function showChests(list) {                         // abre vários baús em sequência
     if (!list.length) return;
@@ -368,13 +373,13 @@
     payTimer = setInterval(async () => {
       if (++n > 300) return clearInterval(payTimer);
       const o = await API.payCheck(ref);
-      if (o && o.paid) { clearInterval(payTimer); LSs.set('rg_payref', ''); setPlayer(o); closeModal(); toast('Pagamento aprovado! +💎' + E.IAP[id].gems + ' 🎉'); if ($('s-shop').classList.contains('active')) renderShop(); }
+      if (o && o.paid) { clearInterval(payTimer); LSs.set('rg_payref', ''); setPlayer(o); closeModal(); SND.fx('pay'); toast('Pagamento aprovado! +💎' + E.IAP[id].gems + ' 🎉'); if ($('s-shop').classList.contains('active')) renderShop(); }
     }, 4000);
   }
   async function resumePay() {                       // voltou do cartão ou recarregou a página: confere a compra pendente
     const ref = LSs.get('rg_payref'); if (!ref || API.demo) return;
     const o = await API.payCheck(ref);
-    if (o && o.paid) { LSs.set('rg_payref', ''); setPlayer(o); toast('Pagamento aprovado! Suas gemas chegaram 🎉'); }
+    if (o && o.paid) { LSs.set('rg_payref', ''); setPlayer(o); SND.fx('pay'); toast('Pagamento aprovado! Suas gemas chegaram 🎉'); }
     else if (o && !o.error) waitPay(ref, ref.split('.')[1], '<p>Conferindo seu pagamento…</p>');
   }
 
@@ -418,12 +423,13 @@
       return;
     }
     const s = Sim.createGame(o.cfg);
-    G = { s, runId: o.runId, actions: [], speed: 1, sel: null, selCell: null, selSlot: null, selRock: null, prev: {}, proj: [], parts: [], ang: {}, recoil: {}, mon: {}, thit: {}, stunKind: {}, mshots: [], trans: null, acc: 0, last: performance.now(), sending: false };
+    G = { s, runId: o.runId, actions: [], speed: 1, sel: null, selCell: null, selSlot: null, selRock: null, prev: {}, proj: [], parts: [], ang: {}, recoil: {}, mon: {}, thit: {}, stunKind: {}, mshots: [], seen: {}, trans: null, acc: 0, last: performance.now(), sending: false };
     document.body.classList.add('ingame');
     document.querySelectorAll('.screen').forEach(x => x.classList.remove('active'));
     $('s-game').classList.add('active');
     $('g-speed').textContent = '1x';
     if (s.bonus) toast('🗝️ Fase secreta! Pegue os ladrões!');
+    SND.music(Sim.worldInfo(l).theme, true);
     resize(); renderPanel(); requestAnimationFrame(loop);
   }
 
@@ -431,6 +437,7 @@
     a.t = G.s.tick;
     if (!Sim.applyAction(G.s, a)) return false;
     G.actions.push(a);
+    const sn = { build: 'build', up: 'up', sell: 'sell', wave: 'wave', trap: 'build', repair: 'up', open: 'coin', relic: 'gems', secret: 'gems' }[a.a]; if (sn) SND.fx(sn);
     return true;
   }
 
@@ -446,6 +453,7 @@
         G.acc -= stepMs;
         G.prev = {}; for (const e of s.enemies) G.prev[e.id] = [e.x, e.y];
         Sim.step(s);
+        for (const e of s.enemies) if (!G.seen[e.id]) { G.seen[e.id] = 1; if (Sim.ENEMIES[e.type].boss) SND.fx('boss'); }
         for (const f of s.fx) fire(f);
         for (const ev of s.ev) onEvent(ev);
         if (G.sel && !s.towers.includes(G.sel)) { G.sel = null; renderPanel(); }
@@ -712,11 +720,14 @@
     G.recoil[f.tw] = 1;
     G.ang[f.tw] = Math.atan2(f.y2 - f.y1, f.x2 - f.x1);
     const sk = T[f.k] ? T[f.k].style : f.k, st = STYLE[sk] || sk;
+    SND.shot(st);
     G.proj.push({ k: st, tk: sk, col: T[f.k] && T[f.k].color, gold: GOLD[sk] || (T[f.k] && T[f.k].rar === 'dourada'), e: f.e, x1: f.x1, y1: f.y1, x2: f.x2, y2: f.y2, splash: f.splash, t: 0, dur: PROJ[st] });
   }
+  const SND_EV = { die: 'die', matk: 'matk', tdie: 'tdie', boom: 'boom', spike: 'spike', revive: 'revive', summon: 'summon', part: 'part' };
   function onEvent(ev) {
     const k = cs / Sim.CELL, x = ev.x * k, y = ev.y * k;
     const burst = (n, c, v, life, r) => { for (let i = 0; i < n; i++) { const a = Math.random() * 6.28, sp = v * (.4 + Math.random()); G.parts.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 1, life, max: life, c, r: r * cs }); } };
+    if (SND_EV[ev.k]) SND.fx(ev.k === 'die' && Sim.ENEMIES[ev.type].boss ? 'bossDie' : SND_EV[ev.k]);
     if (ev.k === 'die') {
       const D = Sim.ENEMIES[ev.type];
       burst(10, D.color, 2.2, 16, .06); burst(5, '#fff', 1.5, 12, .04);
@@ -1215,6 +1226,7 @@
       modal(`<h2>Ops!</h2><p>${out.error}</p><button class="btn" onclick="closeModal();window.__leave()">OK</button>`);
       return;
     }
+    SND.fx(won || out.bonus ? 'win' : 'lose');
     const st = out.stars || 0;
     if (out.bonus) {
       modal(`<h2>🗝️ Caverna do Tesouro</h2><p>Você pegou <b>${out.kills} de ${out.total}</b> ladrões!</p>
@@ -1243,6 +1255,7 @@
 
   function leaveGame(silent) {
     G = null;
+    homeMusic();
     document.body.classList.remove('ingame');
     if (!silent) go('home');
   }
@@ -1256,6 +1269,9 @@
     try { await Billing.init(); } catch (e) { console.warn('billing', e); }
     if (API.demo) { const d = document.createElement('div'); d.className = 'demo-badge'; d.textContent = 'DEMO'; document.body.appendChild(d); }
     $('loading').classList.add('hidden');
+    homeMusic();
+    $('topbar').appendChild(window.Sound ? Sound.button() : document.createElement('i'));
+    if (window.Sound) $('g-speed').after(Sound.button());
     go('home');
     resumePay();
     if (!API.demo && P.maxLevel >= 3 && !P.email && !(function () { try { return localStorage.getItem('rg_accwarn'); } catch (e) { return 1; } })()) { try { localStorage.setItem('rg_accwarn', '1'); } catch (e) {} setTimeout(() => toast('💡 Proteja seu progresso: toque em 👤 Conta'), 1500); }
