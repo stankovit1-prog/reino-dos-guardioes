@@ -115,6 +115,36 @@ O jogador paga pelo Google Play → o Google fica com **15%** (até US$ 1 milhã
 **conta de comerciante** e é transferido para o seu banco todo mês.
 
 
+## 👑 USUÁRIO MESTRE (painel só seu)
+
+Cada jogador tem a **própria conta** (convidado, Google ou código de recuperação). Você é o **mestre**:
+na tela inicial do jogo aparece o botão **👑 Painel do Mestre**, que **só aparece na sua conta**.
+Para qualquer outra pessoa, o painel não existe (o servidor responde "não encontrado").
+
+**Como virar mestre:**
+1. Abra o jogo no site, toque em **👤 Conta** e copie o **ID da conta**.
+2. No Render → seu serviço → **Environment** → `ADMIN_IDS` = esse ID → Save (o servidor reinicia).
+3. Opcional: `ADMIN_EMAILS` = seu e-mail do Google (assim você é mestre em qualquer aparelho onde entrar com Google).
+   Mais de um mestre: separe por vírgula.
+
+**O que o painel faz:**
+- 📊 Resumo: faturamento (hoje e total), compras, jogadores, contas suspensas.
+- 👥 Jogadores: buscar por nome/e-mail/ID, ver tudo da conta, mudar moedas, gemas, energia, fase, nome;
+  dar baús, cartas, liberar todas as armas/fases; suspender, reativar, zerar.
+- 🎉 Eventos (valem na hora, sem atualizar o jogo): moedas/gemas em dobro, aviso na tela inicial,
+  presente para TODOS (cada conta recebe 1 vez), modo manutenção.
+- 👑 Minha conta: encher seu saldo, liberar tudo para você.
+
+## 🔄 ATUALIZAR O JOGO SEM NINGUÉM PERDER NADA
+
+O progresso e as compras ficam no **banco de dados (Neon)**, não no celular e não no código.
+Atualizar o site (novo mapa, mundo, arma) **não apaga contas**: cada jogador continua de onde parou.
+- Contas antigas recebem automaticamente os campos novos (`Economy.migrate`).
+- O site instalado no celular sempre baixa a versão nova sozinho (não precisa reinstalar).
+- **Regras para novos mapas:** adicione mundos NO FINAL da lista `WORLDS` e não mude `LEVELS_PER_WORLD`
+  (assim a fase 37 continua sendo a fase 37). Nunca troque o `DATABASE_URL` por um banco vazio.
+- Para atualizações grandes: ative 🛠️ Manutenção no painel, envie a atualização no GitHub, desative.
+
 ## 🚀 PUBLICAR DE GRAÇA (site que instala no celular)
 
 O jogo fica num site; no celular o jogador toca em **"Adicionar à tela inicial"** e ele vira um app.
