@@ -422,7 +422,6 @@ app.post('/api/multi/start', auth, wrap(async (req, res) => {
   if (room.hostPid !== req.pid) return res.status(403).json({ error: 'Somente o líder pode iniciar a batalha.' });
   if (room.status !== 'waiting') return res.status(400).json({ error: 'A sala já foi iniciada.' });
   const members = room.players.filter(p => !p.left);
-  if (members.length < 2) return res.status(400).json({ error: 'Convide pelo menos mais um jogador para começar.' });
   const level = Number(req.body.level);
   if (!Number.isInteger(level) || level < 1) return res.status(400).json({ error: 'Fase inválida.' });
   const now = Date.now();
