@@ -15,6 +15,7 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS purchases (token TEXT PRIMARY KEY, player TEXT, product TEXT, order_id TEXT, at BIGINT, state TEXT, test INTEGER, provider TEXT, amount TEXT)`,
   // configurações ao vivo do jogo (editadas no painel do mestre)
   `CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`,
+  `CREATE TABLE IF NOT EXISTS auth_challenges (id TEXT PRIMARY KEY, kind TEXT NOT NULL, target TEXT NOT NULL, player TEXT NOT NULL, secret_hash TEXT NOT NULL, expires BIGINT NOT NULL, attempts INTEGER DEFAULT 0)`,
 ];
 const brief = (r) => { const d = typeof r.data === 'string' ? JSON.parse(r.data) : r.data; return { id: r.id, name: d.name, email: d.email || null, maxLevel: d.maxLevel | 0, coins: d.coins | 0, gems: d.gems | 0, created: Number(r.created), banned: !!Number(r.banned), cheats: Number(r.cheats) | 0 }; };
 
@@ -33,6 +34,10 @@ function sqliteStore(file) {
     async setIdentity(kind, key, player) { run('INSERT OR REPLACE INTO identities (kind, key, player, created) VALUES (?, ?, ?, ?)', kind, key, player, Date.now()); },
     async removeIdentities(kind, player) { run('DELETE FROM identities WHERE kind = ? AND player = ?', kind, player); },
     async identitiesOf(player) { return db.prepare('SELECT kind, key FROM identities WHERE player = ?').all(player); },
+    async createChallenge(x) { run('INSERT INTO auth_challenges (id, kind, target, player, secret_hash, expires, attempts) VALUES (?, ?, ?, ?, ?, ?, 0)', x.id, x.kind, x.target, x.player, x.secretHash, x.expires); },
+    async getChallenge(id) { return one('SELECT * FROM auth_challenges WHERE id = ?', id) || null; },
+    async updateChallengeAttempts(id, attempts) { run('UPDATE auth_challenges SET attempts = ? WHERE id = ?', attempts, id); },
+    async deleteChallenge(id) { run('DELETE FROM auth_challenges WHERE id = ?', id); },
     async createPlayer(id, data) { run('INSERT INTO players (id, data, created) VALUES (?, ?, ?)', id, JSON.stringify(data), Date.now()); },
     async getPlayer(id) { const r = one('SELECT * FROM players WHERE id = ?', id); return r ? Object.assign(r, { data: JSON.parse(r.data) }) : null; },
     // fn(p) é síncrona: altera o jogador; se não retornar erro, salva tudo junto
@@ -98,6 +103,10 @@ function pgStore(pool) {
     },
     async removeIdentities(kind, player) { await q('DELETE FROM identities WHERE kind = $1 AND player = $2', [kind, player]); },
     async identitiesOf(player) { return (await q('SELECT kind, key FROM identities WHERE player = $1', [player])).rows; },
+    async createChallenge(x) { await q('INSERT INTO auth_challenges (id, kind, target, player, secret_hash, expires, attempts) VALUES ($1, $2, $3, $4, $5, $6, 0)', [x.id, x.kind, x.target, x.player, x.secretHash, x.expires]); },
+    async getChallenge(id) { return (await q('SELECT * FROM auth_challenges WHERE id = $1', [id])).rows[0] || null; },
+    async updateChallengeAttempts(id, attempts) { await q('UPDATE auth_challenges SET attempts = $1 WHERE id = $2', [attempts, id]); },
+    async deleteChallenge(id) { await q('DELETE FROM auth_challenges WHERE id = $1', [id]); },
     async createPlayer(id, data) { await q('INSERT INTO players (id, data, created) VALUES ($1, $2, $3)', [id, JSON.stringify(data), Date.now()]); },
     async getPlayer(id) { const r = (await q('SELECT * FROM players WHERE id = $1', [id])).rows[0]; return r ? Object.assign(r, { data: JSON.parse(r.data) }) : null; },
     async withPlayer(id, fn) {
