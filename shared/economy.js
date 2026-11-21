@@ -15,7 +15,7 @@
   function newPlayer(now) {
     return { coins: 200, gems: 20, energy: E.ENERGY_MAX, energyAt: now, maxLevel: 0, stars: {},
       perm: {}, unlocked: [], daily: { last: -1, streak: 0 }, bought: {}, name: 'Guardião',
-      secrets: {}, gemSpots: {}, cards: {}, loadouts: {}, freeChestAt: now };   // loadouts[fase] = até 6 armas escolhidas
+      secrets: {}, gemSpots: {}, cards: {}, loadouts: {}, freeChestAt: now };   // loadouts[fase] = até 10 armas escolhidas
   }
 
   // SAVE À PROVA DE ATUALIZAÇÃO: quando o jogo ganha campos novos (mapas, itens...),
@@ -61,18 +61,18 @@
     return unlocked;
   }
 
-  // Seleção salva por fase: no máximo seis armas desbloqueadas e pertencentes à conta.
+  // Seleção salva por fase: no máximo dez armas desbloqueadas e pertencentes à conta.
   function chooseLoadout(p, level, requested) {
     const available = unlockedFor(p);
     const key = String(level);
     let chosen;
     if (Array.isArray(requested)) chosen = requested;
     else if (Array.isArray(p.loadouts[key]) && p.loadouts[key].length) chosen = p.loadouts[key];
-    else chosen = available.slice(0, 6);
+    else chosen = available.slice(0, 10);
 
     const clean = [...new Set(chosen.map(k => String(k)))];
-    if (chosen.length < 1 || chosen.length > 6 || clean.length !== chosen.length || clean.some(k => !available.includes(k))) {
-      return { error: 'Escolha de 1 a 6 armas que estejam desbloqueadas na sua conta.' };
+    if (chosen.length < 1 || chosen.length > 10 || clean.length !== chosen.length || clean.some(k => !available.includes(k))) {
+      return { error: 'Escolha de 1 a 10 armas desbloqueadas na sua conta.' };
     }
     p.loadouts[key] = clean;
     return { loadout: clean };

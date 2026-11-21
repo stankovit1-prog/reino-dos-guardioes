@@ -396,8 +396,8 @@
     const Wd = Sim.worldInfo(l), li = (l - 1) % Sim.LEVELS_PER_WORLD + 1;
     const availableWeapons = (Array.isArray(P.owned) ? P.owned : []).filter(k => !!T[k]);
     const saved = P.loadouts && Array.isArray(P.loadouts[String(l)]) ? P.loadouts[String(l)] : [];
-    let selectedLoadout = (saved.length ? saved : availableWeapons).filter((k, i, a) => availableWeapons.includes(k) && a.indexOf(k) === i).slice(0, 6);
-    if (!selectedLoadout.length) selectedLoadout = availableWeapons.slice(0, 6);
+    let selectedLoadout = (saved.length ? saved : availableWeapons).filter((k, i, a) => availableWeapons.includes(k) && a.indexOf(k) === i).slice(0, 10);
+    if (!selectedLoadout.length) selectedLoadout = availableWeapons.slice(0, 10);
     const loadoutHtml = availableWeapons.length
       ? availableWeapons.map(k => {
           const t = T[k], color = Sim.RARITIES[t.rar].color;
@@ -417,8 +417,8 @@
       ${(l - 1) % Sim.LEVELS_PER_WORLD + 1 === 25 && !(P.relics || {})[l] ? '<div class="news" style="border:1px dashed #c92a2a">🗡️ Uma <b>ARMA SECRETA</b> está escondida neste mapa. Procure a relíquia brilhando!</div>' : ''}
       ${l > P.maxLevel && E.milestone(l) ? `<div class="news" style="border:1px solid #ffd43b">🎁 Recompensa especial ao vencer: <b>${E.CHESTS[E.milestone(l)].icon} ${E.CHESTS[E.milestone(l)].name}</b></div>` : ''}
       <section class="loadout-picker">
-        <div class="loadout-heading"><b>⚔️ Escolha suas armas</b><span id="loadout-count">${selectedLoadout.length}/6 selecionadas</span></div>
-        <p>Use de 1 a 6 armas nesta fase. Sua escolha fica salva para este mapa.</p>
+        <div class="loadout-heading"><b>⚔️ Escolha suas armas</b><span id="loadout-count">${selectedLoadout.length}/10 selecionadas</span></div>
+        <p>Use de 1 a 10 armas nesta fase. Sua escolha fica salva para este mapa.</p>
         <div id="loadout-grid" class="loadout-grid">${loadoutHtml}</div>
       </section>
       ${sec === 'found' ? `<button class="btn secret-btn" id="m-bonus">🗝️ Entrar na FASE SECRETA <small>(grátis, 1 vez)</small></button>` : ''}
@@ -426,7 +426,7 @@
       <button class="btn gold" id="m-play">Jogar ⚡1</button></div>`);
     const grid = $('loadout-grid');
     const updateLoadoutUI = () => {
-      $('loadout-count').textContent = selectedLoadout.length + '/6 selecionadas';
+      $('loadout-count').textContent = selectedLoadout.length + '/10 selecionadas';
       grid.querySelectorAll('[data-loadout]').forEach(b => {
         const selected = selectedLoadout.includes(b.dataset.loadout);
         b.classList.toggle('selected', selected);
@@ -438,7 +438,7 @@
       const key = b.dataset.loadout;
       if (selectedLoadout.includes(key)) selectedLoadout = selectedLoadout.filter(k => k !== key);
       else {
-        if (selectedLoadout.length >= 6) return toast('Você pode levar no máximo 6 armas por fase.');
+        if (selectedLoadout.length >= 10) return toast('Você pode levar no máximo 10 armas por fase.');
         selectedLoadout.push(key);
       }
       updateLoadoutUI();
@@ -987,7 +987,7 @@
     } else if (ev.k === 'knock') {
       const m = G.mon[ev.id]; if (m) m.hitT = 4;
     } else if (ev.k === 'matk') {
-      G.mshots.push({ kind: ev.kind, dmg: ev.dmg, tw: ev.tw, x1: x, y1: y - cs * .3, x2: ev.x2 * k, y2: ev.y2 * k, t: 0 });
+      G.mshots.push({ kind: ev.kind, col: Sim.ENEMIES[ev.sourceType] && Sim.ENEMIES[ev.sourceType].color, dmg: ev.dmg, tw: ev.tw, x1: x, y1: y - cs * .3, x2: ev.x2 * k, y2: ev.y2 * k, t: 0 });
       const mm = G.mon[ev.id]; if (mm) mm.atkT = 10;
       G.stunKind[ev.tw] = ev.kind === 'maldicao' || ev.kind === 'tinta' || ev.kind === 'teia' || ev.kind === 'raio' ? 'maldicao' : 'gelo';
     } else if (ev.k === 'tdie') {
@@ -1217,7 +1217,7 @@
       }
     }
   }
-  const MATK = { tinta: '#343a40', teia: '#f1f3f5', raio: '#ffe066', gosma: '#8ce99a', mordida: '#fa5252', mergulho: '#9775fa', pedra: '#868e96', veneno: '#94d82d', maldicao: '#9775fa', neve: '#f8f9fa', congela: '#74c0fc', gelo: '#a5d8ff', fogo: '#ff922b', lava: '#e8590c' };
+  const MATK = { tinta: '#343a40', teia: '#f1f5f9', raio: '#ffe066', gosma: '#8ce99a', mordida: '#fa5252', mergulho: '#9775fa', pedra: '#868e96', veneno: '#94d82d', maldicao: '#9775fa', neve: '#f8f9fa', congela: '#74c0fc', gelo: '#a5d8ff', fogo: '#ff922b', lava: '#e8590c', dardo_acido: '#a3e635', espinho: '#f97316', cristal: '#67e8f9', sangue: '#be123c', sombra: '#4c1d95', rajada: '#38bdf8', osso: '#e5e7eb' };
   function drawMonsterShots(now) {
     for (let i = G.mshots.length - 1; i >= 0; i--) {
       const m = G.mshots[i]; m.t += Math.max(G.speed, .0001);
@@ -1230,7 +1230,13 @@
         for (let j = 0; j < 10; j++) { const a = Math.random() * 6.28; G.parts.push({ x: m.x2, y: m.y2, vx: Math.cos(a) * 2, vy: Math.sin(a) * 2 - 1, life: 16, max: 16, c: MATK[m.kind], r: cs * .05 }); }
         continue;
       }
-      const c = MATK[m.kind];
+      const c = m.col || MATK[m.kind] || '#e5e7eb';
+      if (m.kind === 'cristal') { ctx.save(); ctx.translate(x, y); ctx.rotate(now * 5); ctx.shadowColor = c; ctx.shadowBlur = cs * .2; ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(0, -cs * .15); ctx.lineTo(cs * .10, 0); ctx.lineTo(0, cs * .15); ctx.lineTo(-cs * .10, 0); ctx.closePath(); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, cs * .025, 0, 7); ctx.fill(); ctx.restore(); continue; }
+      if (m.kind === 'espinho') { ctx.save(); ctx.translate(x, y); ctx.rotate(Math.atan2(m.y2 - m.y1, m.x2 - m.x1)); ctx.fillStyle = c; ctx.shadowColor = c; ctx.shadowBlur = cs * .12; ctx.beginPath(); ctx.moveTo(cs * .16, 0); ctx.lineTo(-cs * .10, -cs * .07); ctx.lineTo(-cs * .06, 0); ctx.lineTo(-cs * .10, cs * .07); ctx.closePath(); ctx.fill(); ctx.restore(); continue; }
+      if (m.kind === 'sangue' || m.kind === 'dardo_acido') { ctx.save(); ctx.fillStyle = c; ctx.shadowColor = c; ctx.shadowBlur = cs * .2; ctx.beginPath(); ctx.ellipse(x, y, cs * .07, cs * (m.kind === 'sangue' ? .12 : .08), Math.atan2(m.y2 - m.y1, m.x2 - m.x1), 0, 7); ctx.fill(); ctx.globalAlpha = .45; ctx.beginPath(); ctx.arc(x - cs * .10, y + cs * .05, cs * .045, 0, 7); ctx.fill(); ctx.restore(); continue; }
+      if (m.kind === 'sombra') { ctx.save(); ctx.strokeStyle = c; ctx.lineWidth = cs * .045; ctx.shadowColor = c; ctx.shadowBlur = cs * .18; for (let j = 0; j < 3; j++) { ctx.globalAlpha = .75 - j * .18; ctx.beginPath(); ctx.arc(x, y, cs * (.07 + j * .035), now * 3 + j, now * 3 + j + Math.PI * 1.35); ctx.stroke(); } ctx.restore(); continue; }
+      if (m.kind === 'osso') { ctx.save(); ctx.translate(x, y); ctx.rotate(now * 6); ctx.strokeStyle = c; ctx.lineWidth = cs * .045; ctx.beginPath(); ctx.moveTo(-cs * .11, 0); ctx.lineTo(cs * .11, 0); ctx.stroke(); for (const dx of [-1, 1]) for (const dy of [-1, 1]) { ctx.beginPath(); ctx.arc(dx * cs * .1, dy * cs * .035, cs * .035, 0, 7); ctx.fillStyle = c; ctx.fill(); } ctx.restore(); continue; }
+      if (m.kind === 'rajada') { ctx.save(); ctx.strokeStyle = c; ctx.shadowColor = c; ctx.shadowBlur = cs * .18; ctx.lineWidth = cs * .04; for (let j = 0; j < 3; j++) { ctx.globalAlpha = .8 - j * .2; ctx.beginPath(); ctx.moveTo(x - (m.x2 - m.x1) * .04 * j, y - (m.y2 - m.y1) * .04 * j); ctx.lineTo(x - (m.x2 - m.x1) * .04 * j - cs * .12, y - (m.y2 - m.y1) * .04 * j - cs * .05); ctx.stroke(); } ctx.restore(); continue; }
       if (m.kind === 'congela') { ctx.strokeStyle = c; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(m.x1, m.y1); ctx.lineTo(x, y); ctx.stroke(); }
       if (m.kind === 'maldicao') { for (let j = 0; j < 4; j++) { ctx.globalAlpha = .3 + j * .15; ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x - (m.x2 - m.x1) * .03 * j, y - (m.y2 - m.y1) * .03 * j + Math.sin(now * 20 + j) * 3, cs * (.06 + j * .02), 0, 7); ctx.fill(); } ctx.globalAlpha = 1; continue; }
       const g = ctx.createRadialGradient(x, y, 1, x, y, cs * .13); g.addColorStop(0, '#fff'); g.addColorStop(.35, c); g.addColorStop(1, c + '00');
