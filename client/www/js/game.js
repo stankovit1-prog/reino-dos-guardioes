@@ -94,7 +94,7 @@
     const gcid = (window.GAME_CONFIG || {}).GOOGLE_CLIENT_ID;
     modal(`<h2>👤 Minha conta</h2>
       <p class="tiny">Proteja seu progresso e suas compras para acessar em outro celular ou computador.</p>
-      <div class="news">${a.google ? `✅ Google conectado: <b>${String(a.google).replace(/[<>&"]/g, '')}</b>` : '⚠️ Conta de convidado. Vincule um método de acesso para proteger seu progresso.'}</div>
+      <div class="news">${a.google ? `✅ Google conectado: <b>${String(a.google).replace(/[<>&"]/g, '')}</b>` : a.emailLogin ? `✅ E-mail protegido: <b>${String(a.email || '').replace(/[<>&"]/g, '')}</b>` : '⚠️ Conta de convidado. Vincule um método de acesso para proteger seu progresso.'}</div>
       ${a.google ? '' : '<div id="g-btn" style="display:flex;justify-content:center;margin:8px 0"></div>'}
       <button class="btn gold" id="m-email" style="width:100%;margin-top:6px">✉️ Entrar ou cadastrar com e-mail</button>
       <button class="btn" id="m-recovery" style="width:100%;margin-top:6px">🔐 Esqueci minha senha</button>
