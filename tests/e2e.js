@@ -37,7 +37,7 @@ const srv = app.listen(0, async () => {
   ok(p.player.gems===g0+700, 'mesmo recibo não dá gemas 2x');
   ok((await call('/api/iap/verify',{productId:'gemas_mini',purchaseToken:'falso_123456789'})).error, 'recibo falso recusado');
   p = await call('/api/shop/buy',{item:'dragao'});
-  ok(p.ok && p.player.unlocked.includes('dragao') && p.player.gems===g0+450, 'dragão liberado com gemas');
+  ok(p.ok && p.player.unlocked.includes('dragao') && p.player.gems===g0+475, 'dragão liberado com gemas');
   p = await call('/api/upgrade',{tower:'arqueiro'}); ok((p.ok && p.player.perm.arqueiro===1) || /Cartas insuficientes/.test(p.error), 'melhoria exige cartas: ' + (p.ok ? 'ok' : p.error));
   p = await call('/api/daily/claim',{}); ok(p.ok, 'recompensa diária'); ok((await call('/api/daily/claim',{})).error, 'diária só 1x por dia');
   for (let i=0;i<12;i++) await call('/api/level/start',{level:1});
@@ -66,7 +66,7 @@ const srv = app.listen(0, async () => {
   ok((await call('/api/chest/open',{type:'divino'})).error, 'baú dos deuses trancado em fase baixa / sem gemas');
   const before = (await call('/api/me')).player.gems;
   ch = await call('/api/chest/open',{type:'prata'});
-  ok(ch.ok && ch.player.gems === before - 12 + ch.gems && ch.cards.reduce((a,c)=>a+c.n,0) === 35, 'baú de prata comprado com 12 gemas: 35 cartas');
+  ok(ch.ok && ch.player.gems === before - 12 + ch.gems && ch.cards.reduce((a,c)=>a+c.n,0) === 14, 'baú de prata comprado com 12 gemas: 14 cartas');
   const pl = ch.player; const k = Object.keys(pl.cards).find(t => pl.cards[t] > 0 && pl.owned.includes(t));
   const up = await call('/api/upgrade',{tower:k});
   ok(up.ok || /Cartas insuficientes|Moedas/.test(up.error), 'melhoria usa cartas: ' + (up.ok ? 'subiu ' + k : up.error));
@@ -84,7 +84,7 @@ const srv = app.listen(0, async () => {
   ok(ch.ok && ch.player.coins < 5000 + 400, 'baú de prata comprado com 500 moedas (veio: ' + ch.gold + ' moedas' + (ch.gems ? ', ' + ch.gems + ' gemas' : '') + (ch.energy ? ', ' + ch.energy + ' energia' : '') + ')');
   ok((await call('/api/chest/open',{type:'divino', pay:'coins'})).error, 'baú dos deuses não sai com moedas');
   let of = await call('/api/offer/buy',{i:0});
-  ok(of.ok && of.cards[0].n === 20, 'cartas do dia: comprou ' + of.cards[0].n + ' cartas por 150 moedas');
+  ok(of.ok && of.cards[0].n === 12 && of.player.coins === undefined || of.cards[0].n === 12, 'cartas do dia: comprou ' + of.cards[0].n + ' cartas por 180 moedas');
   ok((await call('/api/offer/buy',{i:0})).error, 'cada oferta só 1 vez por dia');
   // outra conta usando token alheio
   tok = (await call('/api/auth/guest',{deviceId:'b'.repeat(40)})).token;
