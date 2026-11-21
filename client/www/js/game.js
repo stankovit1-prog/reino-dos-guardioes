@@ -135,7 +135,46 @@
     if (window.google && window.google.accounts) return start();
     const s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.async = true; s.onload = start; document.head.appendChild(s);
   }
+
   $('acc-btn').onclick = () => accountModal();
+  $('profile-account').onclick = () => accountModal();
+
+  // Perfil, ranking e convites usam os dados reais do jogador e do servidor.
+  function renderCommunity() {
+    if (!P) return;
+    const level = Math.max(1, (P.maxLevel | 0) + 1);
+    $('profile-name').textContent = P.name || 'Guardião';
+    $('profile-level').textContent = 'Nível ' + level + ' · ' + (P.maxLevel >= 40 ? 'Veterano' : P.maxLevel >= 10 ? 'Explorador' : 'Iniciante');
+    const list = $('leaderboard-list');
+    if (!list) return;
+    list.innerHTML = '<li>Carregando ranking…</li>';
+    API.leaderboard().then(out => {
+      if (out.error || !Array.isArray(out.players) || !out.players.length) {
+        list.innerHTML = '<li>Ranking indisponível no momento.</li>'; return;
+      }
+      list.innerHTML = out.players.slice(0, 10).map(p => '<li><span>' + (p.rank <= 3 ? ['🥇','🥈','🥉'][p.rank - 1] : '#' + p.rank) + '</span><span>' + String(p.name || 'Guardião').replace(/[<>&"]/g, '') + '</span><b>Nível ' + (p.level + 1) + '</b></li>').join('');
+    }).catch(() => { list.innerHTML = '<li>Não foi possível carregar o ranking.</li>'; });
+  }
+  function inviteUrl() { return location.href.split('#')[0]; }
+  function inviteText() { return 'Venha defender o reino comigo em Reino dos Guardiões! ' + inviteUrl(); }
+  function shareFallback() {
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(inviteText()).then(() => toast('Convite copiado!'));
+    toast('Copie o endereço do jogo para convidar seus amigos.');
+  }
+  $('share-whatsapp').onclick = () => window.open('https://wa.me/?text=' + encodeURIComponent(inviteText()), '_blank', 'noopener');
+  $('share-facebook').onclick = () => window.open('https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(inviteUrl()), '_blank', 'noopener');
+  $('share-instagram').onclick = async () => {
+    try { if (navigator.share) await navigator.share({ title: 'Reino dos Guardiões', text: inviteText(), url: inviteUrl() }); else await shareFallback(); }
+    catch (e) { if (e.name !== 'AbortError') shareFallback(); }
+  };
+  $('share-copy').onclick = shareFallback;
+  document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => {
+    const mode = b.dataset.mode;
+    if (mode === 'solo' || mode === 'campaign') { go('home'); $('levels').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+    if (mode === 'friends') { $('share-whatsapp').click(); return; }
+    toast(mode === 'online' ? 'Partidas online ainda precisam da infraestrutura de salas e sincronização.' : 'Torneios serão liberados após a implementação do modo multiplayer.');
+  }));
+
 
   // ---------------- mapa de fases ----------------
   function renderLevels() {
@@ -1273,6 +1312,7 @@
     $('topbar').appendChild(window.Sound ? Sound.button() : document.createElement('i'));
     if (window.Sound) $('g-speed').after(Sound.button());
     go('home');
+    renderCommunity();
     resumePay();
     if (!API.demo && P.maxLevel >= 3 && !P.email && !(function () { try { return localStorage.getItem('rg_accwarn'); } catch (e) { return 1; } })()) { try { localStorage.setItem('rg_accwarn', '1'); } catch (e) {} setTimeout(() => toast('💡 Proteja seu progresso: toque em 👤 Conta'), 1500); }
   })();
