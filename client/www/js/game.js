@@ -420,12 +420,11 @@
         ? '<label class="multi-note" for="multi-level">Fase da equipe</label>' +
           '<input class="multi-input" id="multi-level" type="number" min="1" max="' +
           Math.max(1, (P.maxLevel | 0) + 1) + '" value="' + Math.max(1, (P.maxLevel | 0) + 1) + '">' +
-          '<button class="multi-btn gold" style="width:100%" id="multi-start"' +
-          (players.length < 2 ? ' disabled' : '') + '>⚔️ Iniciar batalha cooperativa</button>'
-        : '<p class="multi-note">O líder precisa de pelo menos 2 guardiões para começar.</p>';
+          '<button class="multi-btn gold" style="width:100%" id="multi-start">⚔️ Iniciar batalha</button>'
+        : '<p class="multi-note">O líder pode iniciar sozinho ou esperar mais guardiões entrarem.</p>';
       box.innerHTML =
         '<div class="multi-room"><p class="multi-note">' +
-        (room.isHost ? 'Você é o líder. Compartilhe o código para chamar até 3 aliados.' : 'Você entrou na sala. Aguarde o líder iniciar a batalha.') +
+        (room.isHost ? 'Você é o líder. Pode começar sozinho ou chamar até 3 aliados.' : 'Você entrou na sala. Aguarde o líder iniciar a batalha.') +
         '</p><div class="multi-code">' + multiEscape(room.code) + '</div>' +
         '<div class="multi-actions"><button class="multi-btn gold" id="multi-copy">Copiar código</button>' +
         '<button class="multi-btn muted" id="multi-leave">Sair da sala</button></div>' +

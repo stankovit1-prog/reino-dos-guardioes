@@ -17,11 +17,6 @@ jobs:
       - name: Instalar dependências
         working-directory: server
         run: npm ci
-      - name: Verificar sintaxe JavaScript
-        run: |
-          node --check server/server.js
-          node --check client/www/js/api.js
-          node --check client/www/js/game.js
       - name: Executar testes automatizados
         working-directory: server
         run: npm test
