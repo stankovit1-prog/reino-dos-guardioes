@@ -1735,12 +1735,15 @@
       const actionStart = G.multiActionsSent || 0;
       const actionDelta = G.actions.slice(actionStart);
       const finalSync = await API.multiSync(G.multiRoom, G.multiCursor || 0, G.s, actionStart, actionDelta);
-      if (!finalSync.error) {
-        for (const request of finalSync.requests || []) {
-          if (request && request.action) doAction(Object.assign({}, request.action));
-        }
-        G.multiActionsSent = actionStart + actionDelta.length;
+      if (finalSync.error) {
+        G.sending = false;
+        toast('Não foi possível sincronizar a última ação. Tentando novamente…');
+        return;
       }
+      for (const request of finalSync.requests || []) {
+        if (request && request.action) doAction(Object.assign({}, request.action));
+      }
+      G.multiActionsSent = actionStart + actionDelta.length;
       out = await act(API.multiFinish(G.multiRoom));
     } else out = await act(API.finish(G.runId, G.actions));
     const won = s.status === 'won';

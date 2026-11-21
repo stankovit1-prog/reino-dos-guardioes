@@ -512,8 +512,13 @@ app.post('/api/multi/sync', auth, wrap(async (req, res) => {
   }
   if (actionStart > room.actions.length) return res.status(409).json({ error: 'A sincronização perdeu ações anteriores.' });
   if (actionStart < room.actions.length) {
-    const stored = room.actions.slice(actionStart, actionStart + delta.length);
-    if (JSON.stringify(stored) !== JSON.stringify(delta)) return res.status(409).json({ error: 'A sincronização repetiu comandos diferentes.' });
+    const overlap = room.actions.length - actionStart;
+    const stored = room.actions.slice(actionStart);
+    const repeated = delta.slice(0, overlap);
+    if (JSON.stringify(stored) !== JSON.stringify(repeated)) return res.status(409).json({ error: 'A sincronização repetiu comandos diferentes.' });
+    const tail = delta.slice(overlap);
+    if (room.actions.length + tail.length > 5000) return res.status(413).json({ error: 'Limite de comandos da partida atingido.' });
+    room.actions.push(...tail);
   } else {
     if (room.actions.length + delta.length > 5000) return res.status(413).json({ error: 'Limite de comandos da partida atingido.' });
     room.actions.push(...delta);
