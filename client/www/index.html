@@ -14,54 +14,79 @@
 </head>
 <body>
 <div id="app">
-  <!-- Barra de recursos -->
   <header id="topbar">
     <div class="res" id="r-energy"><span>⚡</span><b id="v-energy">10</b><small id="v-energy-t"></small></div>
     <div class="res"><span>🪙</span><b id="v-coins">0</b></div>
     <div class="res gem" data-go="shop"><span>💎</span><b id="v-gems">0</b><i>+</i></div>
   </header>
 
-  <!-- TELA: Fases -->
+  <!-- MENU PRINCIPAL: cada opção abre uma tela própria -->
   <section id="s-home" class="screen active">
-    <div class="hero">
-      <h1>Reino dos<br><span>Guardiões</span></h1>
-      <p id="hello">Defenda o reino!</p>
-      <button id="acc-btn" class="acc-btn">👤 Conta</button>
+    <div class="main-menu-brand">
+      <div class="brand-shield">🛡️</div>
+      <div class="brand-kicker">A LENDA COMEÇA AQUI</div>
+      <h1>REINO DOS<br><span>GUARDIÕES</span></h1>
+      <p>Defenda seu reino. Conquiste novos mundos.</p>
       <button id="install-btn" class="acc-btn hidden">📲 Instalar no celular</button>
-      <a id="admin-btn" class="acc-btn hidden" href="admin.html" style="background:#7a1010;border-color:#ffd43b;text-decoration:none">👑 Painel do Mestre</a>
+      <a id="admin-btn" class="acc-btn hidden" href="admin.html">👑 Painel do Mestre</a>
     </div>
- <section id="community-panel" class="community-panel" aria-label="Comunidade do reino">
-  <div class="profile-strip"><div class="avatar-orb">🛡️</div><div class="profile-copy"><b id="profile-name">Guardião</b><small id="profile-level">Nível 1 · Iniciante</small></div><button class="mini-link" id="profile-account">Perfil ›</button></div>
-  <h2 class="section-title">⚔️ Escolha sua jornada</h2>
-  <div class="mode-grid">
-    <button class="mode-card primary" data-mode="solo"><span>🏹</span><b>Jogar individual</b><small>Defenda o reino</small></button>
-    <button class="mode-card" data-mode="campaign"><span>🗺️</span><b>Campanha</b><small>Explore os 10 mundos</small></button>
-    <button class="mode-card" data-mode="friends"><span>🤝</span><b>Jogar com amigos</b><small>Convide seus aliados</small></button>
-    <button class="mode-card" data-mode="online"><span>🌐</span><b>Outros jogadores</b><small>Modo online em preparação</small></button>
-    <button class="mode-card" data-mode="tournaments"><span>🏆</span><b>Torneios</b><small>Competições em preparação</small></button>
-  </div>
-  <div class="community-columns">
-    <div class="community-card"><div class="community-heading"><b>🏅 Ranking do reino</b><small>Top jogadores</small></div><ol id="leaderboard-list"><li>Carregando ranking…</li></ol></div>
-    <div class="community-card invite-card"><b>📣 Chame seus amigos</b><p>Compartilhe o convite e forme sua aliança.</p><div class="share-actions"><button id="share-whatsapp">WhatsApp</button><button id="share-facebook">Facebook</button><button id="share-instagram">Instagram</button><button id="share-copy">Copiar link</button></div></div>
-  </div>
-</section>
-<div id="news-bar" class="news hidden" style="margin:6px 10px;border:1px solid #ffd43b;text-align:center"></div>
+
+    <div class="menu-player-strip">
+      <div class="avatar-orb">⚔️</div>
+      <div class="profile-copy"><b id="menu-profile-name">Guardião</b><small id="menu-profile-progress">Próxima fase: 1</small></div>
+      <button class="mini-link" id="menu-account">👤 Conta</button>
+    </div>
+
+    <div class="main-menu-actions">
+      <button id="menu-continue" class="menu-option featured">
+        <span class="menu-option-icon">▶</span>
+        <span class="menu-option-copy"><b>CONTINUAR</b><small id="menu-continue-hint">Retomar sua jornada</small></span>
+        <span class="menu-chevron">›</span>
+      </button>
+      <button id="menu-load" class="menu-option">
+        <span class="menu-option-icon">▣</span>
+        <span class="menu-option-copy"><b>CARREGAR JOGO</b><small>Buscar seu progresso salvo</small></span>
+        <span class="menu-chevron">›</span>
+      </button>
+      <button id="menu-new" class="menu-option">
+        <span class="menu-option-icon">⚔️</span>
+        <span class="menu-option-copy"><b>NOVO JOGO / JOGAR</b><small>Escolher mundo e fase</small></span>
+        <span class="menu-chevron">›</span>
+      </button>
+    </div>
+
+    <div class="menu-shortcuts">
+      <button data-go="upgrades"><span>🃏</span><b>ARMAS E CARTAS</b></button>
+      <button data-go="shop"><span>🛒</span><b>LOJA</b></button>
+      <button data-go="community"><span>🏆</span><b>COMUNIDADE</b></button>
+      <button data-go="settings"><span>⚙️</span><b>CONFIGURAÇÕES</b></button>
+    </div>
+
+    <div id="news-bar" class="news hidden"></div>
     <button id="daily-btn" class="daily hidden">🎁 Recompensa diária disponível!</button>
     <button id="free-chest" class="free-chest">📦 <span id="free-chest-t">Baú grátis</span></button>
+    <button class="credits-link" data-go="credits">Créditos e informações</button>
+  </section>
+
+  <!-- MAPA DE FASES: separado do menu principal -->
+  <section id="s-phases" class="screen">
+    <div class="screen-heading">
+      <button class="back-menu" data-go="home">← MENU</button>
+      <div><h2>🗺️ Mundos e fases</h2><p id="hello" class="sub">Escolha sua próxima batalha.</p></div>
+    </div>
     <div id="levels"></div>
   </section>
 
-  <!-- TELA: Melhorias -->
+  <!-- CARTAS / ARMÓRIO -->
   <section id="s-upgrades" class="screen">
-    <h2>🃏 Cartas de Armas</h2>
-    <p class="sub">Junte cartas nos baús para liberar armas novas e melhorar as suas (cartas + moedas).</p>
+    <div class="screen-heading"><button class="back-menu" data-go="home">← MENU</button><div><h2>🃏 Armaria</h2><p class="sub">Cartas, armas e melhorias</p></div></div>
     <div id="rar-legend"></div>
     <div id="up-list"></div>
   </section>
 
-  <!-- TELA: Loja -->
+  <!-- LOJA -->
   <section id="s-shop" class="screen">
-    <h2>Loja</h2>
+    <div class="screen-heading"><button class="back-menu" data-go="home">← MENU</button><div><h2>🛒 Loja do Reino</h2><p class="sub">Baús, cartas e gemas</p></div></div>
     <div id="starter"></div>
     <h3>🃏 Cartas do Dia <small style="font-weight:400">(mudam todo dia)</small></h3>
     <div id="offer-list" class="offers"></div>
@@ -74,7 +99,52 @@
     <p class="sub tiny" id="pay-note"></p>
   </section>
 
-  <!-- TELA: Partida -->
+  <!-- COMUNIDADE: ranking e convites em uma tela independente -->
+  <section id="s-community" class="screen">
+    <div class="screen-heading"><button class="back-menu" data-go="home">← MENU</button><div><h2>🏰 Comunidade</h2><p class="sub">Seu perfil e seus aliados</p></div></div>
+    <section id="community-panel" class="community-panel" aria-label="Comunidade do reino">
+      <div class="profile-strip"><div class="avatar-orb">🛡️</div><div class="profile-copy"><b id="profile-name">Guardião</b><small id="profile-level">Nível 1 · Iniciante</small></div><button class="mini-link" id="profile-account">Perfil ›</button></div>
+      <div class="community-card"><div class="community-heading"><b>🏅 Ranking do reino</b><small>Top jogadores</small></div><ol id="leaderboard-list"><li>Carregando ranking…</li></ol></div>
+      <div class="community-card invite-card"><b>📣 Chame seus amigos</b><p>Compartilhe o convite e forme sua aliança.</p><div class="share-actions"><button id="share-whatsapp">WhatsApp</button><button id="share-facebook">Facebook</button><button id="share-instagram">Instagram</button><button id="share-copy">Copiar link</button></div></div>
+      <div class="community-card future-mode"><b>🌐 Jogar com outros jogadores</b><p>Salas online e batalhas simultâneas estão em desenvolvimento.</p></div>
+      <div class="community-card future-mode"><b>🏆 Torneios</b><p>Competições serão liberadas quando o modo multiplayer estiver pronto.</p></div>
+    </section>
+  </section>
+
+  <!-- CONFIGURAÇÕES -->
+  <section id="s-settings" class="screen">
+    <div class="screen-heading"><button class="back-menu" data-go="home">← MENU</button><div><h2>⚙️ Configurações</h2><p class="sub">Ajuste sua experiência de jogo</p></div></div>
+    <div class="settings-card">
+      <h3>🔊 Som e música</h3>
+      <p>Escolha como deseja ouvir o Reino dos Guardiões.</p>
+      <button class="setting-choice" data-sound-mode="2"><span>🔊</span><b>Som e música ligados</b><i></i></button>
+      <button class="setting-choice" data-sound-mode="1"><span>🔉</span><b>Só efeitos sonoros</b><i></i></button>
+      <button class="setting-choice" data-sound-mode="0"><span>🔇</span><b>Silenciar tudo</b><i></i></button>
+    </div>
+    <div class="settings-card">
+      <h3>🌎 Idioma</h3>
+      <p>Idioma atual</p>
+      <div class="setting-static">🇧🇷 Português (Brasil)</div>
+    </div>
+    <div class="settings-card">
+      <h3>👤 Conta e progresso</h3>
+      <p>Seu progresso é sincronizado com sua conta do jogo.</p>
+      <button class="btn gold" id="settings-account" style="width:100%">Gerenciar minha conta</button>
+    </div>
+  </section>
+
+  <!-- CRÉDITOS -->
+  <section id="s-credits" class="screen">
+    <div class="screen-heading"><button class="back-menu" data-go="home">← MENU</button><div><h2>📜 Créditos</h2><p class="sub">Reino dos Guardiões</p></div></div>
+    <div class="credits-card">
+      <div class="brand-shield">🛡️</div>
+      <h2>Reino dos Guardiões</h2>
+      <p>Um jogo de estratégia e defesa de torres.</p>
+      <p class="tiny">Obrigado por fazer parte desta jornada!</p>
+    </div>
+  </section>
+
+  <!-- PARTIDA -->
   <section id="s-game" class="screen">
     <div id="hud">
       <button id="g-exit" class="icon">✕</button>
@@ -83,21 +153,23 @@
       <div class="hud-item"><span id="g-wave-i">🌊</span> <b id="g-wave">0/0</b></div>
       <button id="g-speed" class="icon">1x</button>
     </div>
-    <div id="canvas-wrap"><canvas id="cv"></canvas>
-      <button id="g-next" class="next">▶ Chamar onda <small id="g-next-t"></small></button>
-    </div>
+    <div id="canvas-wrap"><canvas id="cv"></canvas><button id="g-next" class="next">▶ Chamar onda <small id="g-next-t"></small></button></div>
     <div id="panel"></div>
   </section>
 
   <nav id="nav">
-    <button data-go="home" class="on">🗺️<span>Fases</span></button>
+    <button data-go="home" class="on">🏰<span>Menu</span></button>
+    <button data-go="phases">🗺️<span>Fases</span></button>
     <button data-go="upgrades">🃏<span>Cartas</span></button>
     <button data-go="shop">🛒<span>Loja</span></button>
+    <button data-go="community">🏆<span>Social</span></button>
   </nav>
 
   <div id="modal" class="hidden"><div class="box" id="modal-box"></div></div>
   <div id="toast"></div>
-  <div id="loading"><div class="spin"></div><p>Conectando ao reino…</p></div>
+  <div id="loading">
+    <div class="load-panel"><div class="load-emblem">🛡️</div><h2 id="loading-title">REINO DOS GUARDIÕES</h2><div class="spin"></div><p>Conectando ao reino…</p><div class="load-track"><span></span></div></div>
+  </div>
 </div>
 
 <script src="js/config.js"></script>

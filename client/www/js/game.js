@@ -35,14 +35,89 @@
   }
 
   function go(name) {
+    const target = $('s-' + name);
+    if (!target) name = 'home';
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     $('s-' + name).classList.add('active');
     document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.go === name));
-    if (name === 'home') renderLevels();
+    if (name === 'home') renderMenuSummary();
+    if (name === 'phases') renderLevels();
     if (name === 'upgrades') renderUpgrades();
     if (name === 'shop') renderShop();
+    if (name === 'community') renderCommunity();
+    if (name === 'settings') renderSettings();
   }
   document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => go(b.dataset.go)));
+
+  function showLoading(message) {
+    $('loading-title').textContent = 'REINO DOS GUARDIÕES';
+    $('loading').querySelector('p').textContent = message || 'Carregando seu jogo…';
+    $('loading').classList.remove('hidden');
+  }
+  function hideLoading() {
+    $('loading').classList.add('hidden');
+  }
+  function renderMenuSummary() {
+    if (!P) return;
+    const next = (P.maxLevel | 0) + 1;
+    $('menu-profile-name').textContent = P.name || 'Guardião';
+    $('menu-profile-progress').textContent = 'Próxima fase: ' + next + ' · Progresso salvo';
+    $('menu-continue-hint').textContent = 'Retomar na fase ' + next;
+  }
+  function renderSettings() {
+    const mode = window.Sound ? Sound.mode : 0;
+    document.querySelectorAll('[data-sound-mode]').forEach(b => {
+      const active = Number(b.dataset.soundMode) === mode;
+      b.classList.toggle('selected', active);
+      b.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+  }
+  async function loadSavedGame(openPhases) {
+    showLoading('Carregando seu progresso salvo…');
+    try {
+      const result = await Promise.all([
+        API.init(),
+        new Promise(resolve => setTimeout(resolve, 450))
+      ]);
+      const out = result[0];
+      if (out.error) {
+        toast(out.error);
+        return false;
+      }
+      setPlayer(out);
+      liveInfo(out);
+      renderTop();
+      renderMenuSummary();
+      if (openPhases) go('phases');
+      const next = (P.maxLevel | 0) + 1;
+      toast('Jogo carregado! Próxima fase: ' + next);
+      return true;
+    } catch (e) {
+      toast('Não foi possível carregar seu jogo. Tente novamente.');
+      return false;
+    } finally {
+      hideLoading();
+    }
+  }
+  $('menu-continue').onclick = async () => {
+    if (!await loadSavedGame(false)) return;
+    const total = Sim.WORLDS.length * Sim.LEVELS_PER_WORLD;
+    if ((P.maxLevel | 0) >= total) return toast('Você já concluiu todas as fases disponíveis!');
+    levelIntro((P.maxLevel | 0) + 1);
+  };
+  $('menu-load').onclick = () => loadSavedGame(true);
+  $('menu-new').onclick = () => {
+    go('phases');
+    toast('Escolha um mundo e uma fase. Seu progresso atual será mantido.');
+  };
+  $('menu-account').onclick = () => accountModal();
+  $('settings-account').onclick = () => accountModal();
+  document.querySelectorAll('[data-sound-mode]').forEach(b => b.addEventListener('click', () => {
+    if (!window.Sound) return;
+    Sound.setMode(Number(b.dataset.soundMode));
+    renderSettings();
+    toast(b.dataset.soundMode === '2' ? 'Som e música ligados' : b.dataset.soundMode === '1' ? 'Só efeitos sonoros' : 'Som desligado');
+  }));
 
   // ---------------- barra superior ----------------
   let energyTimer;
@@ -224,7 +299,7 @@
       setTimeout(() => button.classList.remove('tap-busy'), 650);
     }
   }, true);
-  $('acc-btn').onclick = () => accountModal();
+  if ($('acc-btn')) $('acc-btn').onclick = () => accountModal();
   $('profile-account').onclick = () => accountModal();
 
   // Perfil, ranking e convites usam os dados reais do jogador e do servidor.
@@ -256,12 +331,7 @@
     catch (e) { if (e.name !== 'AbortError') shareFallback(); }
   };
   $('share-copy').onclick = shareFallback;
-  document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => {
-    const mode = b.dataset.mode;
-    if (mode === 'solo' || mode === 'campaign') { go('home'); $('levels').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
-    if (mode === 'friends') { $('share-whatsapp').click(); return; }
-    toast(mode === 'online' ? 'Partidas online ainda precisam da infraestrutura de salas e sincronização.' : 'Torneios serão liberados após a implementação do modo multiplayer.');
-  }));
+  // Os modos online e torneios são apresentados na tela Comunidade enquanto estão em desenvolvimento.
 
 
   // ---------------- mapa de fases ----------------
@@ -1390,17 +1460,18 @@
 
   // ---------------- início ----------------
   (async function boot() {
+    $('loading-title').textContent = 'REINO DOS GUARDIÕES';
+    $('loading').querySelector('p').textContent = 'Conectando ao reino e carregando seu progresso…';
     const out = await API.init();
     if (out.error) { $('loading').querySelector('p').textContent = out.error + ' — toque para tentar de novo'; $('loading').onclick = () => location.reload(); return; }
     setPlayer(out); liveInfo(out);
     try { await Billing.init(); } catch (e) { console.warn('billing', e); }
     if (API.demo) { const d = document.createElement('div'); d.className = 'demo-badge'; d.textContent = 'DEMO'; document.body.appendChild(d); }
-    $('loading').classList.add('hidden');
+    hideLoading();
     homeMusic();
     $('topbar').appendChild(window.Sound ? Sound.button() : document.createElement('i'));
     if (window.Sound) $('g-speed').after(Sound.button());
     go('home');
-    renderCommunity();
     resumePay();
     if (!API.demo && P.maxLevel >= 3 && !P.email && !(function () { try { return localStorage.getItem('rg_accwarn'); } catch (e) { return 1; } })()) { try { localStorage.setItem('rg_accwarn', '1'); } catch (e) {} setTimeout(() => toast('💡 Proteja seu progresso: toque em 👤 Conta'), 1500); }
   })();
