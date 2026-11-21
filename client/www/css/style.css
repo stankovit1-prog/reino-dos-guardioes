@@ -259,22 +259,3 @@ button.tap-busy::after{content:"";display:inline-block;width:10px;height:10px;ma
 .google-login-needed{margin:8px 0 2px}
 .google-login-note{color:#ffe08a;text-align:center;margin:4px 0 0}
 @media(max-width:360px){.loadout-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-height:220px}.loadout-card{min-height:68px}}
-
-/* Salas cooperativas online */
-.multiplayer-card{border-color:#8a6ce0!important;background:linear-gradient(145deg,#302366,#1a153b)!important}
-.multi-actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
-.multi-actions>*{flex:1;min-width:115px}
-.multi-btn{border:1px solid #7e68c7;background:linear-gradient(180deg,#5f46a8,#39276d);color:#fff;padding:11px 12px;border-radius:10px;font-weight:900}
-.multi-btn.gold{background:linear-gradient(180deg,#ffe08a,#e09b24);color:#39240a;border-color:#ffe08a}
-.multi-btn.muted{background:#ffffff12;border-color:#ffffff24}
-.multi-btn:disabled{opacity:.4}
-.multi-input{width:100%;box-sizing:border-box;padding:11px;border:1px solid #7565a8;border-radius:10px;background:#130f2d;color:#fff;font-size:15px;margin:5px 0}
-.multi-room{margin-top:10px;padding:12px;border:1px solid #8d75dc;border-radius:12px;background:#ffffff0b}
-.multi-code{font-size:27px;letter-spacing:5px;font-weight:1000;color:#ffe08a;text-align:center;margin:8px}
-.multi-player{display:flex;align-items:center;gap:8px;padding:8px;border-bottom:1px solid #ffffff16;font-size:13px}
-.multi-player:last-child{border-bottom:0}
-.multi-player b{margin-left:auto;color:#b6f2c2}
-.multi-note{font-size:11px;color:#c6bde7;line-height:1.4}
-.multi-room-list{display:grid;gap:7px;margin-top:8px}
-.multi-room-list button{text-align:left;border:1px solid #ffffff25;background:#ffffff0d;border-radius:9px;color:#fff;padding:10px}
-.multi-status{flex:none;padding:6px 10px;text-align:center;background:#34245f;border-block:1px solid #8569ca;color:#ffe08a;font-size:11px;font-weight:900}

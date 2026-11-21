@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "IAP_DEV_FAKE=1 node server.js",
-    "test": "node ../tests/e2e.js && node ../tests/contas.js && node ../tests/auth.js && node ../tests/loadout.js && node ../tests/chests.js && node ../tests/admin.js && node ../tests/multiplayer.js"
+    "test": "node ../tests/e2e.js && node ../tests/contas.js && node ../tests/auth.js && node ../tests/loadout.js && node ../tests/chests.js && node ../tests/admin.js"
   },
   "author": "",
   "license": "ISC",

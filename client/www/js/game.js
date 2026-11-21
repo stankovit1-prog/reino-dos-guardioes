@@ -6,6 +6,9 @@
   const T = Sim.TOWERS, E = Sim.ECON;
   let P = null;               // jogador (vindo do servidor)
   let busy = false;
+  let multiCode = null, multiRole = null;
+  let multiLobbyTimer = null, multiLobbyBusy = false;
+  let multiSyncTimer = null, multiSyncBusy = false;
 
   // ---------------- utilidades de UI ----------------
   let toastT;
@@ -326,6 +329,7 @@
       }
       list.innerHTML = out.players.slice(0, 10).map(p => '<li><span>' + (p.rank <= 3 ? ['🥇','🥈','🥉'][p.rank - 1] : '#' + p.rank) + '</span><span>' + String(p.name || 'Guardião').replace(/[<>&"]/g, '') + '</span><b>Nível ' + (p.level + 1) + '</b></li>').join('');
     }).catch(() => { list.innerHTML = '<li>Não foi possível carregar o ranking.</li>'; });
+    renderMultiPanel();
   }
   function inviteUrl() { return location.href.split('#')[0]; }
   function inviteText() { return 'Venha defender o reino comigo em Reino dos Guardiões! ' + inviteUrl(); }
@@ -340,7 +344,241 @@
     catch (e) { if (e.name !== 'AbortError') shareFallback(); }
   };
   $('share-copy').onclick = shareFallback;
-  // Os modos online e torneios são apresentados na tela Comunidade enquanto estão em desenvolvimento.
+  // ---------------- salas multiplayer cooperativas ----------------
+  const multiEscape = (value) => String(value || '').replace(/[<>&"]/g, '');
+  function saveMultiCode(code, role) {
+    multiCode = code || null;
+    multiRole = role || null;
+    try {
+      if (multiCode) {
+        localStorage.setItem('rg_multi_room', multiCode);
+        localStorage.setItem('rg_multi_role', multiRole || 'guest');
+      } else {
+        localStorage.removeItem('rg_multi_room');
+        localStorage.removeItem('rg_multi_role');
+      }
+    } catch (e) {}
+  }
+  function stopMultiLobby() {
+    clearInterval(multiLobbyTimer);
+    multiLobbyTimer = null;
+  }
+  function startMultiLobby() {
+    stopMultiLobby();
+    multiRefreshLobby();
+    multiLobbyTimer = setInterval(multiRefreshLobby, 1800);
+  }
+  function renderMultiPanel(state) {
+    const box = $('multiplayer-area');
+    if (!box) return;
+    if (API.demo) {
+      box.innerHTML = '<p class="multi-note">Entre no jogo online para criar salas com outros guardiões.</p>';
+      return;
+    }
+    if (!multiCode) {
+      const rooms = state && state.rooms || [];
+      let roomHtml = '';
+      for (const room of rooms) {
+        roomHtml += '<button data-multi-join="' + multiEscape(room.code) + '">⚔️ ' +
+          multiEscape(room.host) + ' · ' + room.players + '/' + room.maxPlayers +
+          ' jogadores · ' + multiEscape(room.code) + '</button>';
+      }
+      if (!roomHtml) roomHtml = '<p class="multi-note">Nenhuma sala aguardando. Crie uma e convide seus amigos pelo código.</p>';
+      box.innerHTML =
+        '<div class="multi-actions"><button class="multi-btn gold" id="multi-create">＋ Criar sala</button></div>' +
+        '<label class="multi-note" for="multi-code-input">Entrar na sala de um amigo</label>' +
+        '<input class="multi-input" id="multi-code-input" maxlength="6" placeholder="CÓDIGO DA SALA" autocomplete="off">' +
+        '<div class="multi-actions"><button class="multi-btn" id="multi-join">Entrar com código</button>' +
+        '<button class="multi-btn muted" id="multi-refresh">Atualizar salas</button></div>' +
+        '<div class="multi-room-list">' + roomHtml + '</div>';
+      $('multi-create').onclick = async () => {
+        const out = await act(API.multiCreate());
+        if (!out.ok) return;
+        saveMultiCode(out.room.code, 'host');
+        startMultiLobby();
+      };
+      $('multi-join').onclick = () => joinMultiRoom($('multi-code-input').value);
+      $('multi-refresh').onclick = () => multiRefreshLobby();
+      box.querySelectorAll('[data-multi-join]').forEach(button => {
+        button.onclick = () => joinMultiRoom(button.dataset.multiJoin);
+      });
+      return;
+    }
+    if (!state || !state.room) {
+      box.innerHTML = '<p class="multi-note">Reconectando à sala ' + multiEscape(multiCode) + '…</p>';
+      return;
+    }
+    const room = state.room;
+    const players = room.players || [];
+    if (room.status === 'waiting') {
+      let list = '';
+      for (const player of players) {
+        list += '<div class="multi-player">🛡️ ' + multiEscape(player.name) +
+          (player.isHost ? '<b>👑 Líder</b>' : '<b>Pronto</b>') + '</div>';
+      }
+      const hostControls = room.isHost
+        ? '<label class="multi-note" for="multi-level">Fase da equipe</label>' +
+          '<input class="multi-input" id="multi-level" type="number" min="1" max="' +
+          Math.max(1, (P.maxLevel | 0) + 1) + '" value="' + Math.max(1, (P.maxLevel | 0) + 1) + '">' +
+          '<button class="multi-btn gold" style="width:100%" id="multi-start"' +
+          (players.length < 2 ? ' disabled' : '') + '>⚔️ Iniciar batalha cooperativa</button>'
+        : '<p class="multi-note">O líder precisa de pelo menos 2 guardiões para começar.</p>';
+      box.innerHTML =
+        '<div class="multi-room"><p class="multi-note">' +
+        (room.isHost ? 'Você é o líder. Compartilhe o código para chamar até 3 aliados.' : 'Você entrou na sala. Aguarde o líder iniciar a batalha.') +
+        '</p><div class="multi-code">' + multiEscape(room.code) + '</div>' +
+        '<div class="multi-actions"><button class="multi-btn gold" id="multi-copy">Copiar código</button>' +
+        '<button class="multi-btn muted" id="multi-leave">Sair da sala</button></div>' +
+        '<b>Jogadores (' + players.length + '/' + room.maxPlayers + ')</b>' + list +
+        hostControls + '</div>';
+      $('multi-copy').onclick = () => {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(room.code).then(() => toast('Código da sala copiado!'))
+            .catch(() => toast('Código: ' + room.code));
+        } else toast('Código da sala: ' + room.code);
+      };
+      $('multi-leave').onclick = leaveMultiRoom;
+      if (room.isHost && $('multi-start')) $('multi-start').onclick = async () => {
+        const level = Number($('multi-level').value);
+        const out = await act(API.multiStart(multiCode, level));
+        if (!out.ok) return;
+        if (out.player) setPlayer({ player: out.player });
+        stopMultiLobby();
+        startLevel(level, false, null, {
+          room: multiCode, role: 'host', cfg: out.cfg, runId: out.runId,
+          players: out.room.players
+        });
+      };
+      return;
+    }
+    if (room.status === 'playing') {
+      box.innerHTML = '<div class="multi-room"><b>⚔️ Batalha em andamento</b><p class="multi-note">Fase ' +
+        room.level + ' · ' + players.length + ' guardiões. ' +
+        (room.isHost ? 'Você lidera a simulação.' : 'A batalha será aberta automaticamente.') +
+        '</p></div>';
+      if (!G) {
+        stopMultiLobby();
+        if (state.player) setPlayer({ player: state.player });
+        startLevel(room.level, false, null, {
+          room: multiCode, role: room.isHost ? 'host' : 'guest',
+          cfg: state.cfg, runId: state.runId, snapshot: state.snapshot,
+          actions: state.actions || [], players
+        });
+      }
+      return;
+    }
+    if (room.status === 'finished' || room.status === 'abandoned') {
+      box.innerHTML = '<div class="multi-room"><b>' +
+        (room.status === 'finished' ? 'Batalha encerrada' : 'Sala encerrada') +
+        '</b><p class="multi-note">' +
+        (room.status === 'finished' ? 'A equipe concluiu a partida.' : 'O líder encerrou a sala.') +
+        '</p><button class="multi-btn muted" id="multi-dismiss">Fechar</button></div>';
+      $('multi-dismiss').onclick = () => {
+        saveMultiCode(null);
+        stopMultiLobby();
+        renderMultiPanel({ rooms: [] });
+      };
+    }
+  }
+  async function multiRefreshLobby() {
+    if (multiLobbyBusy || !$('multiplayer-area')) return;
+    multiLobbyBusy = true;
+    try {
+      if (multiCode) {
+        const state = await API.multiState(multiCode);
+        if (state.error) {
+          saveMultiCode(null);
+          stopMultiLobby();
+          renderMultiPanel({ rooms: [] });
+          toast(state.error);
+          return;
+        }
+        renderMultiPanel(state);
+      } else {
+        const state = await API.multiRooms();
+        renderMultiPanel(state);
+      }
+    } catch (e) {
+      // A próxima consulta automática tenta novamente.
+    } finally {
+      multiLobbyBusy = false;
+    }
+  }
+  async function joinMultiRoom(code) {
+    const clean = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (clean.length !== 6) return toast('Digite o código de 6 caracteres.');
+    const out = await act(API.multiJoin(clean));
+    if (out.ok) {
+      saveMultiCode(clean, 'guest');
+      startMultiLobby();
+    }
+  }
+  async function leaveMultiRoom() {
+    if (multiCode) await API.multiLeave(multiCode);
+    saveMultiCode(null);
+    stopMultiLobby();
+    renderMultiPanel({ rooms: [] });
+  }
+  function stopMultiSync() {
+    clearInterval(multiSyncTimer);
+    multiSyncTimer = null;
+    multiSyncBusy = false;
+  }
+  function startMultiSync() {
+    stopMultiSync();
+    multiSyncTimer = setInterval(async () => {
+      if (!G || !G.multiRole || G.sending || multiSyncBusy) return;
+      multiSyncBusy = true;
+      try {
+        if (G.multiRole === 'host') {
+          const out = await API.multiSync(G.multiRoom, G.multiCursor || 0, G.s, G.actions);
+          if (out.error) {
+            toast(out.error);
+            return;
+          }
+          let changed = false;
+          for (const request of out.requests || []) {
+            if (request && request.action && doAction(Object.assign({}, request.action))) changed = true;
+          }
+          G.multiCursor = Math.max(G.multiCursor || 0, Number(out.cursor) || 0);
+          if (changed) renderPanel();
+        } else {
+          const out = await API.multiState(G.multiRoom);
+          if (out.error) {
+            toast('Conexão com a sala perdida.');
+            return;
+          }
+          if (out.snapshot && Number(out.snapshot.tick) >= Number(G.s.tick)) {
+            G.s = out.snapshot;
+            if (G.sel) G.sel = G.s.towers.find(t => t.id === G.sel.id) || null;
+            renderPanel();
+          }
+          if (out.room && (out.room.status === 'finished' || out.room.status === 'abandoned')) {
+            if (G.multiFinished) return;
+            G.multiFinished = true;
+            G.speed = 0;
+            stopMultiSync();
+            const profile = await API.init();
+            if (profile && profile.player) setPlayer(profile);
+            const won = !!(out.result && out.result.won);
+            modal('<h2>' + (won ? 'Vitória da equipe! 🏆' : 'Batalha encerrada') +
+              '</h2><p>' + (won ? 'Sua equipe venceu! As recompensas foram entregues à sua conta.' :
+              'A batalha cooperativa foi encerrada.') +
+              '</p><button class="btn gold" id="m-multi-home" style="width:100%">Voltar ao reino</button>');
+            $('m-multi-home').onclick = () => {
+              closeModal();
+              leaveGame();
+            };
+          }
+        }
+      } catch (e) {
+        // Uma falha isolada de rede não encerra a partida.
+      } finally {
+        multiSyncBusy = false;
+      }
+    }, 800);
+  }
+
 
 
   // ---------------- mapa de fases ----------------
@@ -664,24 +902,37 @@
   }
   window.addEventListener('resize', () => G && resize());
 
-  async function startLevel(l, bonus, loadout) {
-    const o = await act(API.start(l, bonus, loadout));
+  async function startLevel(l, bonus, loadout, multiInfo) {
+    const o = multiInfo ? { ok: true, cfg: multiInfo.cfg, runId: multiInfo.runId } : await act(API.start(l, bonus, loadout));
     if (!o.ok) {
       if (o.error === 'Sem energia') $('r-energy').click();
       return;
     }
-    const s = Sim.createGame(o.cfg);
-    G = { s, runId: o.runId, actions: [], speed: 1, sel: null, selCell: null, selSlot: null, selRock: null, prev: {}, proj: [], parts: [], ang: {}, recoil: {}, mon: {}, thit: {}, stunKind: {}, mshots: [], seen: {}, trans: null, acc: 0, last: performance.now(), sending: false };
+    const s = multiInfo && multiInfo.snapshot ? multiInfo.snapshot : Sim.createGame(o.cfg);
+    G = { s, runId: o.runId, actions: multiInfo && multiInfo.actions ? multiInfo.actions.slice() : [], speed: 1, sel: null, selCell: null, selSlot: null, selRock: null, prev: {}, proj: [], parts: [], ang: {}, recoil: {}, mon: {}, thit: {}, stunKind: {}, mshots: [], seen: {}, trans: null, acc: 0, last: performance.now(), sending: false,
+      multiRoom: multiInfo && multiInfo.room || null, multiRole: multiInfo && multiInfo.role || null, multiCursor: 0, multiFinished: false };
     document.body.classList.add('ingame');
     document.querySelectorAll('.screen').forEach(x => x.classList.remove('active'));
     $('s-game').classList.add('active');
     $('g-speed').textContent = '1x';
+    const teamBar = $('multi-status');
+    if (teamBar) {
+      teamBar.classList.toggle('hidden', !multiInfo);
+      teamBar.textContent = multiInfo ? '⚔️ COOPERATIVO · ' + ((multiInfo.players || []).length || 2) + ' GUARDIÕES NA EQUIPE' : '';
+    }
     if (s.bonus) toast('🗝️ Fase secreta! Pegue os ladrões!');
     SND.music(Sim.worldInfo(l).theme, true);
     resize(); renderPanel(); requestAnimationFrame(loop);
+    if (multiInfo) startMultiSync();
   }
 
   function doAction(a) {
+    if (G.multiRole === 'guest') {
+      API.multiAction(G.multiRoom, a).then(out => {
+        if (out && out.error) toast(out.error);
+      }).catch(() => toast('Não foi possível enviar o comando à equipe.'));
+      return true;
+    }
     a.t = G.s.tick;
     if (!Sim.applyAction(G.s, a)) return false;
     G.actions.push(a);
@@ -694,7 +945,7 @@
     if (!G) return;
     const dt = Math.min(250, now - G.last); G.last = now;
     const s = G.s;
-    if (s.status === 'playing') {
+    if (s.status === 'playing' && G.multiRole !== 'guest') {
       G.acc += dt * G.speed;
       const stepMs = 1000 / Sim.TPS;
       while (G.acc >= stepMs && s.status === 'playing') {
@@ -709,7 +960,7 @@
     }
     draw(Math.min(1, G.acc / (1000 / Sim.TPS)));
     hud();
-    if (s.status !== 'playing' && !G.sending) finish();
+    if (s.status !== 'playing' && !G.sending && G.multiRole !== 'guest') finish();
     requestAnimationFrame(loop);
   }
 
@@ -1474,7 +1725,17 @@
   async function finish() {
     G.sending = true;
     const s = G.s;
-    const out = await act(API.finish(G.runId, G.actions));
+    let out;
+    if (G.multiRole === 'host') {
+      stopMultiSync();
+      const finalSync = await API.multiSync(G.multiRoom, G.multiCursor || 0, G.s, G.actions);
+      if (!finalSync.error) {
+        for (const request of finalSync.requests || []) {
+          if (request && request.action) doAction(Object.assign({}, request.action));
+        }
+      }
+      out = await act(API.multiFinish(G.multiRoom, G.actions));
+    } else out = await act(API.finish(G.runId, G.actions));
     const won = s.status === 'won';
     if (out.error) {
       modal(`<h2>Ops!</h2><p>${out.error}</p><button class="btn" onclick="closeModal();window.__leave()">OK</button>`);
@@ -1492,7 +1753,7 @@
     const rw2 = out.relicWeapon ? `<div class="reveal" style="--rc:#e03131"><span class="new">${out.relicWeapon.isNew ? 'ARMA SECRETA!' : '+' + out.relicWeapon.n + ' cartas'}</span><div class="ti">${T[out.relicWeapon.k].icon}</div><b>${T[out.relicWeapon.k].name}</b><small>Secreta</small></div>` : '';
     const extra = rw2 + (out.secret ? '<div class="news" style="border:1px solid #b197fc">🗝️ <b>Fase secreta liberada!</b> Procure a chave no mapa de fases.</div>' : '')
       + (out.gemRock ? `<p class="tiny">💎 ${out.gemRock} da pedra preciosa incluídas</p>` : '');
-    modal(won ? `<h2>Vitória! 🎉</h2><div class="stars">${'⭐'.repeat(st)}${'<span style="opacity:.25">⭐</span>'.repeat(3 - st)}</div>
+    modal(won ? `<h2>${G.multiRole === 'host' ? 'Vitória da equipe! 🏆' : 'Vitória! 🎉'}</h2><div class="stars">${'⭐'.repeat(st)}${'<span style="opacity:.25">⭐</span>'.repeat(3 - st)}</div>
       <div class="rw"><span>🪙 +${fmt(out.coins)}</span>${out.gems ? `<span>💎 +${out.gems}</span>` : ''}</div>${extra}
       <div class="row"><button class="btn" style="background:#555;box-shadow:none" id="m-home">Mapa</button><button class="btn gold" id="m-next">Próxima ▶</button></div>`
       : `<h2>O castelo caiu 😢</h2><p>Chegou à onda ${s.wave + 1} de ${s.waves.length}.<br>Dica: melhore suas torres em ⚔️ Melhorias!</p>
@@ -1508,6 +1769,12 @@
   }
 
   function leaveGame(silent) {
+    stopMultiSync();
+    if (multiCode) API.multiLeave(multiCode).catch(() => {});
+    saveMultiCode(null);
+    stopMultiLobby();
+    const teamBar = $('multi-status');
+    if (teamBar) { teamBar.classList.add('hidden'); teamBar.textContent = ''; }
     G = null;
     homeMusic();
     document.body.classList.remove('ingame');
@@ -1529,6 +1796,15 @@
     $('topbar').appendChild(window.Sound ? Sound.button() : document.createElement('i'));
     if (window.Sound) $('g-speed').after(Sound.button());
     go('home');
+    try {
+      const savedRoom = localStorage.getItem('rg_multi_room');
+      if (savedRoom) {
+        multiCode = savedRoom;
+        multiRole = localStorage.getItem('rg_multi_role') || 'guest';
+        go('community');
+        startMultiLobby();
+      }
+    } catch (e) {}
     resumePay();
     if (!API.demo && P.maxLevel >= 3 && !P.email && !(function () { try { return localStorage.getItem('rg_accwarn'); } catch (e) { return 1; } })()) { try { localStorage.setItem('rg_accwarn', '1'); } catch (e) {} setTimeout(() => toast('💡 Proteja seu progresso: toque em 👤 Conta'), 1500); }
   })();
