@@ -57,6 +57,7 @@ const send = (res, out) => res.status(out.error ? 400 : 200).json(out);
 const wrap = (fn) => (req, res) => fn(req, res).catch(e => { console.error('[erro]', e); res.status(500).json({ error: 'Erro no servidor, tente de novo' }); });
 const tokenFor = (pid) => jwt.sign({ sub: pid }, SECRET, { expiresIn: '180d' });
 const sha = (s) => crypto.createHash('sha256').update(String(s)).digest('hex');
+const authCodeHash = (s) => crypto.createHmac('sha256', SECRET).update(String(s)).digest('hex');
 const passwordHash = (password) => {
   const salt = crypto.randomBytes(16).toString('hex');
   return 'scrypt:' + salt + ':' + crypto.scryptSync(String(password), salt, 64).toString('hex');
@@ -78,7 +79,9 @@ const validPhone = (v) => { const d = v.slice(1); return v[0] === '+' && d.lengt
 async function deliverAuthCode(channel, to, code, purpose) {
   const url = process.env.AUTH_DELIVERY_URL, token = process.env.AUTH_DELIVERY_TOKEN;
   if (!url || !token) return false;
-  const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+  const deliveryUrl = new URL(url);
+  if (PROD && deliveryUrl.protocol !== 'https:') return false;
+  const response = await fetch(deliveryUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
     body: JSON.stringify({ channel, to, code, purpose, subject: 'Reino dos Guardiões - código de segurança',
       message: 'Seu código do Reino dos Guardiões é ' + code + '. Ele expira em 10 minutos. Se você não solicitou, ignore esta mensagem.' }),
     signal: AbortSignal.timeout(8000) });
@@ -91,7 +94,7 @@ async function issueAuthChallenge(kind, target, player) {
   const channel = kind === 'phone_link' || (kind === 'password_recovery' && target.startsWith('+')) ? 'sms' : 'email';
   const sent = await deliverAuthCode(channel, target, code, kind);
   if (!sent) return { error: 'Não foi possível enviar o código. Tente novamente mais tarde.' };
-  await store.createChallenge({ id, kind, target, player, secretHash: sha(code), expires: Date.now() + 10 * 60 * 1000 });
+  await store.createChallenge({ id, kind, target, player, secretHash: authCodeHash(code), expires: Date.now() + 10 * 60 * 1000 });
   return { ok: true, challengeId: id, channel };
 }
 async function verifyAuthChallenge(id, code, kind) {
@@ -100,7 +103,7 @@ async function verifyAuthChallenge(id, code, kind) {
     if (row) await store.deleteChallenge(row.id);
     return null;
   }
-  const a = Buffer.from(row.secret_hash, 'hex'), b = Buffer.from(sha(String(code || '').trim()), 'hex');
+  const a = Buffer.from(row.secret_hash, 'hex'), b = Buffer.from(authCodeHash(String(code || '').trim()), 'hex');
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
     const attempts = Number(row.attempts) + 1;
     if (attempts >= 5) await store.deleteChallenge(row.id); else await store.updateChallengeAttempts(row.id, attempts);
