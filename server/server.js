@@ -72,9 +72,9 @@ const passwordMatches = (password, encoded) => {
   } catch (e) { return false; }
 };
 const normalizeEmail = (v) => String(v || '').trim().toLowerCase();
-const validEmail = (v) => v.length <= 254 && /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(v);
-const normalizePhone = (v) => '+' + String(v || '').replace(/\\D/g, '');
-const validPhone = (v) => /^\\+[1-9]\\d{7,14}$/.test(v);
+const validEmail = (v) => { const p = v.split('@'); return v.length <= 254 && p.length === 2 && p[0].length > 0 && p[1].includes('.') && !v.includes(' ') && !v.includes('..'); };
+const normalizePhone = (v) => '+' + String(v || '').replace(/[^0-9]/g, '');
+const validPhone = (v) => { const d = v.slice(1); return v[0] === '+' && d.length >= 8 && d.length <= 15 && /^[1-9][0-9]+$/.test(d); };
 async function deliverAuthCode(channel, to, code, purpose) {
   const url = process.env.AUTH_DELIVERY_URL, token = process.env.AUTH_DELIVERY_TOKEN;
   if (!url || !token) return false;
