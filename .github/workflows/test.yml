@@ -3,7 +3,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main, feature/home-social-auth]
+    branches: [main, feature/home-social-auth, feature/menu-principal-navegacao-loading]
 jobs:
   test:
     runs-on: ubuntu-latest
