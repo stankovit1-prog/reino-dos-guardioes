@@ -579,17 +579,35 @@
       c.translate(x, y - (fly ? r * .25 + Math.sin(o.t * 3 + e.id) * r * .08 : 0));
       c.rotate(o.angle || 0);                              // gira o corpo para a direção do caminho
       if (o.atk) { const a = Math.sin(o.atk * Math.PI); c.translate(a * r * .25, 0); c.scale(1 + a * .18, 1 + a * .18); }   // investida ao atacar
-      // Aura colorida individual: cada criatura deixa uma assinatura de energia no campo.
-      const pulse = .5 + .5 * Math.sin(o.t * (D.boss ? 4.5 : 3.2) + e.id);
-      c.globalAlpha = .24 + pulse * .12; c.fillStyle = '#000'; c.beginPath(); c.ellipse(0, 0, r * 1.02, r * .82, 0, 0, 7); c.fill();
-      c.globalAlpha = .35 + pulse * .25; c.strokeStyle = D.color; c.lineWidth = Math.max(1.5, r * .045); c.shadowColor = D.color; c.shadowBlur = D.boss ? r * .55 : r * .28;
-      c.beginPath(); c.ellipse(0, 0, r * (D.boss ? 1.32 : 1.08), r * (D.boss ? 1.18 : .96), 0, 0, 7); c.stroke(); c.shadowBlur = 0; c.globalAlpha = 1;
-      if (D.boss) { c.globalAlpha = .18 + pulse * .12; c.strokeStyle = D.color; c.lineWidth = Math.max(2, r * .08); c.beginPath(); c.arc(0, 0, r * 1.48, -Math.PI, Math.PI); c.stroke(); c.globalAlpha = 1; }
-      // fagulhas orbitais destacam a energia própria de cada monstro
-      c.save(); c.shadowColor = D.color; c.shadowBlur = r * .22; c.fillStyle = D.color;
-      for (let j = 0; j < (D.boss ? 7 : 3); j++) { const n = D.boss ? 7 : 3; const a = o.t * (D.boss ? 1.7 : 1.1) + e.id * .7 + j * Math.PI * 2 / n; const rr = r * (D.boss ? 1.28 : 1.12); circ(Math.cos(a) * rr, Math.sin(a) * rr, Math.max(1.2, r * .035), D.color); }
-      c.restore();
-      if (e.revived && !D.fly) { c.globalAlpha = .25 + Math.sin(o.t * 6) * .1; circ(0, 0, r * 1.15, '#fff3bf'); c.globalAlpha = 1; }
+      // Efeito leve para não sobrecarregar o canvas quando há muitos inimigos.
+      // Monstros comuns usam apenas um contorno; o brilho pulsante fica reservado aos chefes.
+      if (D.boss) {
+        const pulse = .5 + .5 * Math.sin(o.t * 4.5 + e.id);
+        c.globalAlpha = .42 + pulse * .2;
+        c.strokeStyle = D.color;
+        c.lineWidth = Math.max(2, r * .055);
+        c.beginPath();
+        c.ellipse(0, 0, r * 1.28, r * 1.14, 0, 0, 7);
+        c.stroke();
+        c.globalAlpha = .2 + pulse * .1;
+        c.lineWidth = Math.max(1, r * .035);
+        c.beginPath();
+        c.arc(0, 0, r * 1.42, -Math.PI, Math.PI);
+        c.stroke();
+      } else {
+        c.globalAlpha = .42;
+        c.strokeStyle = D.color;
+        c.lineWidth = Math.max(1, r * .025);
+        c.beginPath();
+        c.ellipse(0, 0, r * 1.04, r * .94, 0, 0, 7);
+        c.stroke();
+      }
+      c.globalAlpha = 1;
+      if (e.revived && !D.fly) {
+        c.globalAlpha = .25 + Math.sin(o.t * 6) * .1;
+        circ(0, 0, r * 1.15, '#fff3bf');
+        c.globalAlpha = 1;
+      }
       DRAW[e.type](e, u, o.walk, Object.assign({ base, col }, o));
       c.restore();
       if (e.slowT > 0) { c.globalAlpha = .75; c.fillStyle = '#e7f5ff'; for (let i = 0; i < 3; i++) { c.beginPath(); c.arc(x + Math.cos(o.t * 3 + i * 2) * r * .8, y + Math.sin(o.t * 3 + i * 2) * r * .8, r * .08, 0, 7); c.fill(); } c.globalAlpha = 1; }
