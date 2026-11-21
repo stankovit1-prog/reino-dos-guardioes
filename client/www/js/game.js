@@ -299,7 +299,7 @@
       setTimeout(() => button.classList.remove('tap-busy'), 650);
     }
   }, true);
-  $('acc-btn').onclick = () => accountModal();
+  if ($('acc-btn')) $('acc-btn').onclick = () => accountModal();
   $('profile-account').onclick = () => accountModal();
 
   // Perfil, ranking e convites usam os dados reais do jogador e do servidor.
