@@ -21,6 +21,12 @@ services:
         sync: false
       - key: GOOGLE_CLIENT_ID    # ID do cliente OAuth do Google (Entrar com Google)
         sync: false
+      - key: AUTH_DELIVERY_URL    # webhook HTTPS para envio de códigos por e-mail/SMS
+        sync: false
+      - key: AUTH_DELIVERY_TOKEN  # token secreto do webhook de envio
+        sync: false
+      - key: NODE_VERSION
+        value: 22
       - key: ADMIN_IDS           # ID da SUA conta (aparece em 👤 Conta no jogo) = usuário mestre
         sync: false
       - key: ADMIN_EMAILS        # (opcional) seu e-mail do Google, para ser mestre ao entrar com Google
