@@ -256,7 +256,7 @@ app.post('/api/auth/recover', rateLimit({ windowMs: 3600000, limit: 10 }), wrap(
 }));
 app.get('/api/account', auth, wrap(async (req, res) => {
   const ids = await store.identitiesOf(req.pid), row = await store.getPlayer(req.pid);
-  res.json({ ok: true, id: req.pid, google: ids.some(i => i.kind === 'google') ? (row.data.email || 'conectado') : null, hasCode: ids.some(i => i.kind === 'code'), emailLogin: ids.some(i => i.kind === 'email'), hasPhone: ids.some(i => i.kind === 'phone'),
+  res.json({ ok: true, id: req.pid, google: ids.some(i => i.kind === 'google') ? (row.data.email || 'conectado') : null, hasCode: ids.some(i => i.kind === 'code'), emailLogin: ids.some(i => i.kind === 'email'), email: ids.some(i => i.kind === 'email') ? row.data.email : null, hasPhone: ids.some(i => i.kind === 'phone'),
     purchases: (await store.purchasesOf(req.pid)).map(x => ({ product: x.product, at: Number(x.at), state: x.state, provider: x.provider })) });
 }));
 
@@ -426,7 +426,7 @@ app.get('/api/admin/players', adminOnly, wrap(async (req, res) => {
 app.get('/api/admin/player/:id', adminOnly, wrap(async (req, res) => {
   const row = await store.getPlayer(String(req.params.id));
   if (!row) return res.status(404).json({ error: 'Jogador não encontrado' });
-  res.json({ ok: true, id: row.id, banned: !!Number(row.banned), cheats: Number(row.cheats) | 0, created: Number(row.created), data: row.data,
+  res.json({ ok: true, id: row.id, banned: !!Number(row.banned), cheats: Number(row.cheats) | 0, created: Number(row.created), data: (() => { const safe = Object.assign({}, row.data); delete safe.passwordHash; return safe; })(),
     logins: (await store.identitiesOf(row.id)).map(i => i.kind), purchases: await store.purchasesOf(row.id) });
 }));
 app.post('/api/admin/player/:id', adminOnly, wrap(async (req, res) => {
@@ -465,7 +465,7 @@ app.post('/api/admin/player/:id', adminOnly, wrap(async (req, res) => {
         p.maxLevel = TOTAL_LEVELS;
         return { ok: true };
       case 'reset': {      // começa do zero (mantém nome, e-mail e compras registradas)
-        const keep = { name: p.name, nameSet: p.nameSet, email: p.email };
+        const keep = { name: p.name, nameSet: p.nameSet, email: p.email, phone: p.phone, passwordHash: p.passwordHash };
         for (const k of Object.keys(p)) delete p[k];
         Object.assign(p, Eco.newPlayer(Date.now()), keep);
         return { ok: true };
