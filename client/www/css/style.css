@@ -164,3 +164,78 @@ a.tap-loading,button.tap-loading{position:relative}
 
 button.tap-busy{filter:brightness(1.18)}
 button.tap-busy::after{content:"";display:inline-block;width:10px;height:10px;margin-left:7px;vertical-align:middle;border:2px solid #ffffff66;border-top-color:#fff;border-radius:50%;animation:sp .65s linear infinite}
+
+
+/* ===== Menu principal e telas independentes ===== */
+.main-menu-brand{
+  text-align:center;padding:18px 12px 14px;margin:4px 0 12px;
+  border:1px solid #7961bb;border-radius:20px;
+  background:radial-gradient(ellipse at 50% 0%,#59439c 0%,#24194f 58%,#171137 100%);
+  box-shadow:0 8px 24px #0005,inset 0 1px #ffffff22;
+}
+.brand-shield{font-size:42px;line-height:1.1;filter:drop-shadow(0 4px 3px #0008)}
+.brand-kicker{font-size:9px;letter-spacing:3px;font-weight:900;color:#ffe08a;margin-top:6px}
+.main-menu-brand h1{font-size:27px;line-height:1.04;margin:5px 0;text-shadow:0 3px 0 #0009;letter-spacing:1px}
+.main-menu-brand h1 span{font-size:34px;background:linear-gradient(90deg,#fff0a6,#ffc857,#ff8f5b);-webkit-background-clip:text;background-clip:text;color:transparent}
+.main-menu-brand p{font-size:12px;color:#d9d0ff;margin:7px 0 3px}
+.menu-player-strip{display:flex;align-items:center;gap:10px;padding:9px 11px;margin:0 0 12px;border-radius:14px;background:linear-gradient(105deg,#35266f,#201747);border:1px solid #6653ad}
+.menu-player-strip .avatar-orb{flex:none}
+.main-menu-actions{display:grid;gap:8px;margin-bottom:10px}
+.menu-option{display:flex;align-items:center;gap:12px;width:100%;min-height:61px;text-align:left;padding:9px 13px;border-radius:14px;background:linear-gradient(100deg,#293654,#1b2340);border:1px solid #62739b;box-shadow:0 4px 0 #090f20}
+.menu-option.featured{background:linear-gradient(100deg,#8a5b1e,#5c3c22 58%,#30214c);border-color:#ffd76a;box-shadow:0 4px 0 #39220e}
+.menu-option-icon{width:40px;height:40px;display:grid;place-items:center;flex:none;border-radius:11px;background:#ffffff18;border:1px solid #ffffff25;font-size:23px}
+.menu-option.featured .menu-option-icon{background:#ffd43b;color:#4a2c00}
+.menu-option-copy{flex:1;min-width:0}
+.menu-option-copy b,.menu-option-copy small{display:block}
+.menu-option-copy b{font-size:14px;letter-spacing:.5px}
+.menu-option-copy small{font-size:10px;color:#d0cbea;margin-top:2px}
+.menu-chevron{font-size:28px;color:#ffe08a;padding:0 3px}
+.menu-option:active,.menu-shortcuts button:active{transform:translateY(2px);filter:brightness(1.15)}
+.menu-shortcuts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 14px}
+.menu-shortcuts button{min-height:75px;border-radius:13px;border:1px solid #6653ad;background:linear-gradient(145deg,#382b78,#211747);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;box-shadow:0 3px 0 #100b28}
+.menu-shortcuts button span{font-size:24px}
+.menu-shortcuts button b{font-size:10px;letter-spacing:.3px}
+.credits-link{display:block;margin:10px auto 2px;padding:8px 14px;background:none;color:#bdb3e9;font-size:11px;text-decoration:underline}
+.screen-heading{display:flex;align-items:center;gap:10px;padding:8px 0 12px;margin-bottom:6px;border-bottom:1px solid #ffffff20}
+.screen-heading>div{min-width:0;flex:1}
+.screen-heading h2{margin:0;font-size:20px}
+.screen-heading .sub{margin:3px 0 0}
+.back-menu{flex:none;padding:8px 10px;border-radius:10px;background:#ffffff14;border:1px solid #ffffff25;font-size:10px;font-weight:900;color:#ffe08a}
+#s-phases #levels{padding-top:16px}
+#s-community .community-panel{display:grid;gap:10px}
+#s-community .community-card{background:linear-gradient(145deg,#2e245e,#1d1741);border:1px solid #55468f;border-radius:15px;padding:13px}
+#s-community .community-card p{font-size:12px;line-height:1.45;color:var(--mut);margin:6px 0 10px}
+#s-community #leaderboard-list{padding-left:0}
+.future-mode{border-style:dashed!important;background:#171334!important}
+.future-mode p{margin-bottom:0!important}
+.settings-card{background:linear-gradient(145deg,#30255f,#1e183f);border:1px solid #594990;border-radius:16px;padding:14px;margin:12px 0}
+.settings-card h3{color:#ffe08a;margin:0 0 6px}
+.settings-card>p{font-size:12px;color:var(--mut);margin:0 0 10px}
+.setting-choice{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:12px;margin:7px 0;border-radius:11px;background:#ffffff0d;border:1px solid #ffffff1d}
+.setting-choice span{font-size:21px}
+.setting-choice b{font-size:12px;flex:1}
+.setting-choice i{width:17px;height:17px;border:2px solid #9b91c9;border-radius:50%}
+.setting-choice.selected{border-color:#ffd43b;background:#ffd43b19}
+.setting-choice.selected i{border:5px solid #ffd43b;background:#38285f}
+.setting-static{padding:12px;border-radius:10px;background:#ffffff0c;font-size:13px}
+.credits-card{text-align:center;background:linear-gradient(160deg,#35266f,#181235);border:1px solid #705eb5;border-radius:18px;padding:28px 18px;margin:20px 0}
+.credits-card h2{color:#ffe08a;margin:12px 0}
+.credits-card p{color:var(--mut);font-size:13px}
+#nav{display:flex;flex:none}
+#nav button{min-width:0;font-size:19px;padding:7px 0 9px}
+#nav button span{font-size:10px}
+#nav button.on{color:#ffe08a;text-shadow:0 0 12px #ffd43b88}
+#loading{background:radial-gradient(ellipse at 50% 35%,#3e2e83,#171137 72%)}
+.load-panel{width:min(82vw,340px);text-align:center;padding:26px 18px;border-radius:20px;border:1px solid #7b69c0;background:#19133beF;box-shadow:0 14px 45px #0009}
+.load-emblem{font-size:44px;margin-bottom:8px;filter:drop-shadow(0 4px 4px #0008)}
+.load-panel h2{font-size:16px;letter-spacing:1.8px;color:#ffe08a;margin:0 0 20px}
+.load-panel .spin{margin:0 auto 13px;width:38px;height:38px}
+.load-panel p{font-size:12px;color:#d0c8f1;margin:0 0 15px}
+.load-track{height:6px;background:#ffffff1b;border-radius:99px;overflow:hidden}
+.load-track span{display:block;width:36%;height:100%;border-radius:99px;background:linear-gradient(90deg,#ffd43b,#ff9f43);animation:loadSweep 1.3s ease-in-out infinite}
+@keyframes loadSweep{0%{transform:translateX(-110%)}100%{transform:translateX(300%)}}
+@media(min-width:600px){
+  .main-menu-brand{max-width:520px;margin:12px auto}
+  .menu-player-strip,.main-menu-actions,.menu-shortcuts{max-width:520px;margin-left:auto;margin-right:auto}
+  #s-community .community-panel{max-width:620px;margin:0 auto}
+}
