@@ -63,6 +63,11 @@ const srv = app.listen(0, async () => {
     const soloStarted = await call(solo.token, '/api/multi/start', { code: soloRoom.room.code, level: 1 });
     ok(soloStarted.ok && soloStarted.room.status === 'playing', 'permite iniciar sala com apenas um jogador');
     const soloRun = play(1, soloStarted.cfg.perm, soloStarted.cfg.unlocked, { loadout: soloStarted.cfg.loadout });
+    const soloSync = await call(solo.token, '/api/multi/sync', {
+      code: soloRoom.room.code, cursor: 0, snapshot: { tick: soloRun.ticks, status: soloRun.status },
+      actionStart: 0, actions: soloRun.actions
+    });
+    ok(soloSync.ok, 'jogador solo sincroniza o histórico final da partida');
     db.prepare('UPDATE runs SET started = started - 600000 WHERE player = ?').run(solo.playerId);
     const soloFinished = await call(solo.token, '/api/multi/finish', { code: soloRoom.room.code });
     ok(soloFinished.ok && soloFinished.team.length === 1 && soloFinished.team[0].ok, 'valida vitória de partida solo pelo modo multiplayer');
