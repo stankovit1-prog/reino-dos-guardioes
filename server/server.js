@@ -432,12 +432,12 @@ app.post('/api/multi/start', auth, wrap(async (req, res) => {
     if (!row || row.banned) return res.status(400).json({ error: 'Um dos jogadores não pode participar desta sala.' });
     const preview = JSON.parse(JSON.stringify(row.data));
     Eco.migrate(preview, now);
-    const check = Eco.startLevel(preview, level, now, false, undefined);
+    const check = Eco.startLevel(preview, level, now, false, undefined, { allowLocked: member.pid !== room.hostPid });
     if (check.error) return res.status(400).json({ error: member.name + ': ' + check.error });
     if (member.pid === room.hostPid) sharedCfg = check.cfg;
   }
   for (const member of members) {
-    const spent = await mutate(member.pid, p => Eco.startLevel(p, level, Date.now(), false, undefined));
+    const spent = await mutate(member.pid, p => Eco.startLevel(p, level, Date.now(), false, undefined, { allowLocked: member.pid !== room.hostPid }));
     if (spent.error) return res.status(400).json({ error: member.name + ': ' + spent.error });
     member.runId = crypto.randomUUID();
     await store.insertRun(member.runId, member.pid, sharedCfg);

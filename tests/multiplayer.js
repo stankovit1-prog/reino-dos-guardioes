@@ -73,6 +73,45 @@ const srv = app.listen(0, async () => {
     ok(soloFinished.ok && soloFinished.team.length === 1 && soloFinished.team[0].ok, 'valida vitória de partida solo pelo modo multiplayer');
     const soloProfile = await call(solo.token, '/api/me');
     ok(soloProfile.player.maxLevel === 1, 'salva o progresso do jogador solo');
+
+    // Coop com progresso diferente: o líder já liberou a fase 2, o aliado ainda está na fase 1.
+    const guestRow = db.prepare('SELECT data FROM players WHERE id=?').get(guest.playerId);
+    const guestData = JSON.parse(guestRow.data);
+    guestData.maxLevel = 0;
+    guestData.stars = {};
+    guestData.energy = 10;
+    guestData.energyAt = Date.now();
+    db.prepare('UPDATE players SET data=? WHERE id=?').run(JSON.stringify(guestData), guest.playerId);
+
+    const catchupRoom = await call(host.token, '/api/multi/create', {});
+    await call(guest.token, '/api/multi/join', { code: catchupRoom.room.code });
+    const catchupStart = await call(host.token, '/api/multi/start', { code: catchupRoom.room.code, level: 2 });
+    ok(catchupStart.ok && catchupStart.room.status === 'playing',
+      'permite aliado acompanhar fase já desbloqueada pelo líder');
+    if (catchupStart.ok) {
+      const catchupRun = play(2, catchupStart.cfg.perm, catchupStart.cfg.unlocked, { loadout: catchupStart.cfg.loadout });
+      const catchupSync = await call(host.token, '/api/multi/sync', {
+        code: catchupRoom.room.code, cursor: 0, snapshot: { tick: catchupRun.ticks, status: catchupRun.status },
+        actionStart: 0, actions: catchupRun.actions
+      });
+      ok(catchupSync.ok, 'sincroniza partida cooperativa de fase avançada');
+      db.prepare('UPDATE runs SET started = started - 600000 WHERE player IN (?, ?)')
+        .run(host.playerId, guest.playerId);
+      const catchupFinish = await call(host.token, '/api/multi/finish', { code: catchupRoom.room.code });
+      ok(catchupFinish.ok, 'conclui partida cooperativa com progresso diferente');
+      const caughtUp = await call(guest.token, '/api/me');
+      ok(caughtUp.player.maxLevel === 0 && (caughtUp.player.stars[2] | 0) > 0,
+        'registra vitória cooperativa sem pular fases anteriores');
+      const stillLocked = await call(guest.token, '/api/level/start', { level: 2 });
+      ok(stillLocked.error === 'Fase bloqueada', 'mantém bloqueio da campanha solo até concluir a fase 1');
+
+      const firstSolo = await call(guest.token, '/api/level/start', { level: 1 });
+      const firstSoloRun = play(1, firstSolo.cfg.perm, firstSolo.cfg.unlocked, { loadout: firstSolo.cfg.loadout });
+      db.prepare('UPDATE runs SET started = started - 600000 WHERE id=?').run(firstSolo.runId);
+      const firstSoloFinish = await call(guest.token, '/api/level/finish', { runId: firstSolo.runId, actions: firstSoloRun.actions });
+      ok(firstSoloFinish.ok && firstSoloFinish.player.maxLevel === 2,
+        'ao concluir a fase 1, libera também a fase 2 já vencida em cooperativo');
+    }
   } catch (error) {
     console.error(error);
     process.exitCode = 1;
