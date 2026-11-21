@@ -36,6 +36,7 @@
       if (out.token) { token = out.token; LS.set('rg_token', token); API.playerId = out.playerId; LS.set('rg_pid', out.playerId); }
       return out;
     }
+    const saveSession = (o) => { if (o && o.token) { token = o.token; LS.set('rg_token', token); API.playerId = o.playerId; LS.set('rg_pid', o.playerId); } return o; };
     return {
       demo: false,
       async init() { if (!token) return login(); API.playerId = LS.get('rg_pid'); const me = await call('/api/me'); return me.error ? login() : me; },
@@ -49,6 +50,14 @@
       verifyPurchase: (productId, purchaseToken) => call('/api/iap/verify', { productId, purchaseToken }),
       // ----- conta -----
       account: () => call('/api/account'),
+      leaderboard: () => call('/api/leaderboard'),
+      emailStart: (email, password) => call('/api/auth/email/start', { email, password }),
+      emailVerify: (challengeId, code) => call('/api/auth/email/verify', { challengeId, code, deviceId: deviceId() }).then(saveSession),
+      emailLogin: (email, password) => call('/api/auth/email/login', { email, password, deviceId: deviceId() }).then(saveSession),
+      recoveryStart: (channel, target) => call('/api/auth/recovery/start', channel === 'sms' ? { channel, phone: target } : { channel, email: target }),
+      recoveryVerify: (challengeId, code, password) => call('/api/auth/recovery/verify', { challengeId, code, password, deviceId: deviceId() }).then(saveSession),
+      phoneStart: (phone) => call('/api/account/phone/start', { phone }),
+      phoneVerify: (challengeId, code) => call('/api/account/phone/verify', { challengeId, code }),
       newCode: () => call('/api/account/code', {}),
       async recover(code) { const o = await call('/api/auth/recover', { code, deviceId: deviceId() }, true); if (o.token) { token = o.token; LS.set('rg_token', token); API.playerId = o.playerId; LS.set('rg_pid', o.playerId); } return o; },
       async google(idToken) { const o = await call('/api/auth/google', { idToken, deviceId: deviceId() }, true); if (o.token) { token = o.token; LS.set('rg_token', token); API.playerId = o.playerId; LS.set('rg_pid', o.playerId); } return o; },
@@ -78,6 +87,14 @@
       offer: (i) => delay(wrap(p => Eco.buyOffer(p, i, Date.now()))),
       verifyPurchase: (productId) => delay(wrap(p => Eco.grantIap(p, productId))),
       account: () => delay({ ok: true, google: null, hasCode: false, purchases: [] }),
+      leaderboard: () => delay({ ok: true, players: [] }),
+      emailStart: () => delay({ error: 'Cadastro por e-mail exige o servidor online.' }),
+      emailVerify: () => delay({ error: 'Cadastro por e-mail exige o servidor online.' }),
+      emailLogin: () => delay({ error: 'Login por e-mail exige o servidor online.' }),
+      recoveryStart: () => delay({ error: 'Recuperação por e-mail/SMS exige o servidor online.' }),
+      recoveryVerify: () => delay({ error: 'Recuperação por e-mail/SMS exige o servidor online.' }),
+      phoneStart: () => delay({ error: 'Vincular telefone exige o servidor online.' }),
+      phoneVerify: () => delay({ error: 'Vincular telefone exige o servidor online.' }),
       newCode: () => delay({ ok: true, code: 'RG-DEMO-0000-0000' }),
       recover: () => delay({ error: 'Na demonstração a conta fica só neste aparelho. No jogo online o código funciona.' }),
       google: () => delay({ error: 'Login com Google funciona no jogo online.' }),

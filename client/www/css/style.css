@@ -132,3 +132,35 @@ body.ingame #nav, body.ingame #topbar{display:none}
 
 #topbar .snd-btn{flex:0 0 auto;width:40px;height:auto;border-radius:999px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.08);font-size:16px}
 .snd-btn{color:#fff;border:0;cursor:pointer}
+
+
+/* ---- nova central do reino ---- */
+.community-panel{padding:8px 0 22px}
+.profile-strip{display:flex;align-items:center;gap:10px;padding:11px 13px;background:linear-gradient(110deg,#35266f,#201747);border:1px solid #6852b5;border-radius:16px;margin:8px 0 18px}
+.avatar-orb{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#ffd43b,#e67700);font-size:25px;box-shadow:0 0 16px #ffd43b55}
+.profile-copy{flex:1;min-width:0}.profile-copy b,.profile-copy small{display:block}.profile-copy small{font-size:11px;color:var(--mut);margin-top:2px}
+.mini-link{background:#ffffff18;border:1px solid #ffffff30;border-radius:10px;padding:7px 10px;font-weight:800}
+.section-title{font-size:17px;margin:0 0 10px}
+.mode-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.mode-card{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:4px;min-height:104px;padding:12px;background:linear-gradient(145deg,#34266e,#211747);border:1px solid #58459e;border-radius:15px}
+.mode-card>span{font-size:25px}.mode-card b{font-size:13px}.mode-card small{font-size:10px;color:var(--mut)}
+.mode-card.primary{background:linear-gradient(145deg,#7c4dce,#452b91);border-color:#b197fc}
+.mode-card:active,.share-actions button:active{transform:scale(.98)}
+.community-columns{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}
+.community-card{min-width:0;background:#211747;border:1px solid #4a3c94;border-radius:15px;padding:12px}
+.community-heading{display:flex;justify-content:space-between;align-items:center;gap:6px}.community-heading small{font-size:10px;color:var(--mut)}
+#leaderboard-list{list-style:none;padding:0;margin:9px 0 0;display:grid;gap:6px}
+#leaderboard-list li{display:flex;align-items:center;gap:8px;padding:7px 8px;background:#ffffff0b;border-radius:9px;font-size:12px}
+#leaderboard-list li b{margin-left:auto;color:var(--gold)}
+.invite-card p{font-size:12px;color:var(--mut);margin:5px 0 10px}
+.share-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.share-actions button{background:#ffffff12;border:1px solid #ffffff24;border-radius:9px;padding:9px 5px;font-size:11px;font-weight:800}
+#s-home .hero{padding-top:5px}
+#s-home .hero h1{font-size:27px}
+#s-home .hero h1 span{font-size:34px}
+#loading .spin{box-shadow:0 0 20px #ffd43b22}
+a.tap-loading,button.tap-loading{position:relative}
+@media(min-width:600px){.mode-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.community-columns{grid-template-columns:1fr 1fr}}
+
+button.tap-busy{filter:brightness(1.18)}
+button.tap-busy::after{content:"";display:inline-block;width:10px;height:10px;margin-left:7px;vertical-align:middle;border:2px solid #ffffff66;border-top-color:#fff;border-radius:50%;animation:sp .65s linear infinite}

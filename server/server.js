@@ -57,7 +57,60 @@ const send = (res, out) => res.status(out.error ? 400 : 200).json(out);
 const wrap = (fn) => (req, res) => fn(req, res).catch(e => { console.error('[erro]', e); res.status(500).json({ error: 'Erro no servidor, tente de novo' }); });
 const tokenFor = (pid) => jwt.sign({ sub: pid }, SECRET, { expiresIn: '180d' });
 const sha = (s) => crypto.createHash('sha256').update(String(s)).digest('hex');
-
+const authCodeHash = (s) => crypto.createHmac('sha256', SECRET).update(String(s)).digest('hex');
+const passwordHash = (password) => {
+  const salt = crypto.randomBytes(16).toString('hex');
+  return 'scrypt:' + salt + ':' + crypto.scryptSync(String(password), salt, 64).toString('hex');
+};
+const passwordMatches = (password, encoded) => {
+  if (typeof encoded !== 'string') return false;
+  const parts = encoded.split(':');
+  if (parts.length !== 3 || parts[0] !== 'scrypt') return false;
+  try {
+    const expected = Buffer.from(parts[2], 'hex');
+    const actual = crypto.scryptSync(String(password), parts[1], 64);
+    return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
+  } catch (e) { return false; }
+};
+const normalizeEmail = (v) => String(v || '').trim().toLowerCase();
+const validEmail = (v) => { const p = v.split('@'); return v.length <= 254 && p.length === 2 && p[0].length > 0 && p[1].includes('.') && !v.includes(' ') && !v.includes('..'); };
+const normalizePhone = (v) => '+' + String(v || '').replace(/[^0-9]/g, '');
+const validPhone = (v) => { const d = v.slice(1); return v[0] === '+' && d.length >= 8 && d.length <= 15 && /^[1-9][0-9]+$/.test(d); };
+async function deliverAuthCode(channel, to, code, purpose) {
+  const url = process.env.AUTH_DELIVERY_URL, token = process.env.AUTH_DELIVERY_TOKEN;
+  if (!url || !token) return false;
+  const deliveryUrl = new URL(url);
+  if (PROD && deliveryUrl.protocol !== 'https:') return false;
+  const response = await fetch(deliveryUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+    body: JSON.stringify({ channel, to, code, purpose, subject: 'Reino dos Guardiões - código de segurança',
+      message: 'Seu código do Reino dos Guardiões é ' + code + '. Ele expira em 10 minutos. Se você não solicitou, ignore esta mensagem.' }),
+    signal: AbortSignal.timeout(8000) });
+  return response.ok;
+}
+async function issueAuthChallenge(kind, target, player) {
+  if (!process.env.AUTH_DELIVERY_URL || !process.env.AUTH_DELIVERY_TOKEN) return { error: 'Envio de e-mail/SMS ainda não configurado no servidor.' };
+  const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+  const id = crypto.randomUUID();
+  const channel = kind === 'phone_link' || (kind === 'password_recovery' && target.startsWith('+')) ? 'sms' : 'email';
+  const sent = await deliverAuthCode(channel, target, code, kind);
+  if (!sent) return { error: 'Não foi possível enviar o código. Tente novamente mais tarde.' };
+  await store.createChallenge({ id, kind, target, player, secretHash: authCodeHash(code), expires: Date.now() + 10 * 60 * 1000 });
+  return { ok: true, challengeId: id, channel };
+}
+async function verifyAuthChallenge(id, code, kind) {
+  const row = await store.getChallenge(String(id || ''));
+  if (!row || row.kind !== kind || Number(row.expires) < Date.now() || Number(row.attempts) >= 5) {
+    if (row) await store.deleteChallenge(row.id);
+    return null;
+  }
+  const a = Buffer.from(row.secret_hash, 'hex'), b = Buffer.from(authCodeHash(String(code || '').trim()), 'hex');
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    const attempts = Number(row.attempts) + 1;
+    if (attempts >= 5) await store.deleteChallenge(row.id); else await store.updateChallengeAttempts(row.id, attempts);
+    return null;
+  }
+  return row;
+}
 // ---------- App ----------
 const app = express();
 app.set('trust proxy', 1);
@@ -158,6 +211,81 @@ app.post('/api/auth/google', rateLimit({ windowMs: 3600000, limit: 30 }), wrap(a
   send(res, await loginResponse(pid, { linked }));
 }));
 
+
+/* 3) E-mail e senha: o cadastro confirma o e-mail antes de vincular a identidade. */
+app.post('/api/auth/email/start', auth, rateLimit({ windowMs: 3600000, limit: 5 }), wrap(async (req, res) => {
+  const email = normalizeEmail(req.body.email), password = String(req.body.password || '');
+  if (!validEmail(email) || password.length < 10 || password.length > 128) return res.status(400).json({ error: 'Informe um e-mail válido e uma senha de 10 a 128 caracteres.' });
+  if (await store.findIdentity('email', email)) return res.status(409).json({ error: 'Este e-mail já está cadastrado. Use Entrar ou Recuperar senha.' });
+  const out = await issueAuthChallenge('email_register', email, req.pid);
+  if (out.error) return res.status(503).json(out);
+  await store.setSetting('auth_pending:' + out.challengeId, { passwordHash: passwordHash(password) });
+  res.json({ ok: true, challengeId: out.challengeId, channel: 'email' });
+}));
+app.post('/api/auth/email/verify', rateLimit({ windowMs: 3600000, limit: 10 }), wrap(async (req, res) => {
+  const row = await verifyAuthChallenge(req.body.challengeId, req.body.code, 'email_register');
+  if (!row) return res.status(400).json({ error: 'Código inválido ou expirado. Solicite outro código.' });
+  const pending = await store.getSetting('auth_pending:' + row.id);
+  if (!pending || await store.findIdentity('email', row.target)) return res.status(400).json({ error: 'Cadastro não pode ser concluído. Inicie novamente.' });
+  await store.setIdentity('email', row.target, row.player);
+  await store.withPlayer(row.player, p => { p.email = row.target; p.passwordHash = pending.passwordHash; return { ok: true }; });
+  await store.deleteChallenge(row.id);
+  await store.setSetting('auth_pending:' + row.id, null);
+  const device = String(req.body.deviceId || '');
+  if (validDevice(device)) await store.setIdentity('device', device, row.player);
+  send(res, await loginResponse(row.player, { linked: true }));
+}));
+app.post('/api/auth/email/login', rateLimit({ windowMs: 3600000, limit: 15 }), wrap(async (req, res) => {
+  const email = normalizeEmail(req.body.email), pid = await store.findIdentity('email', email);
+  const row = pid && await store.getPlayer(pid);
+  if (!row || !passwordMatches(req.body.password || '', row.data.passwordHash)) return res.status(401).json({ error: 'E-mail ou senha incorretos.' });
+  const device = String(req.body.deviceId || '');
+  if (validDevice(device)) await store.setIdentity('device', device, pid);
+  send(res, await loginResponse(pid));
+}));
+app.post('/api/auth/recovery/start', rateLimit({ windowMs: 3600000, limit: 5 }), wrap(async (req, res) => {
+  const channel = req.body.channel === 'sms' ? 'sms' : 'email';
+  const target = channel === 'sms' ? normalizePhone(req.body.phone) : normalizeEmail(req.body.email);
+  if (channel === 'sms' ? !validPhone(target) : !validEmail(target)) return res.status(400).json({ error: 'Informe um contato válido.' });
+  if (!process.env.AUTH_DELIVERY_URL || !process.env.AUTH_DELIVERY_TOKEN) return res.status(503).json({ error: 'Envio de e-mail/SMS ainda não configurado no servidor.' });
+  const pid = await store.findIdentity(channel === 'sms' ? 'phone' : 'email', target);
+  if (pid) {
+    const out = await issueAuthChallenge('password_recovery', target, pid);
+    if (out.error) return res.status(503).json(out);
+    return res.json({ ok: true, challengeId: out.challengeId, channel });
+  }
+  res.json({ ok: true });
+}));
+app.post('/api/auth/recovery/verify', rateLimit({ windowMs: 3600000, limit: 10 }), wrap(async (req, res) => {
+  const row = await verifyAuthChallenge(req.body.challengeId, req.body.code, 'password_recovery');
+  const password = String(req.body.password || '');
+  if (!row || password.length < 10 || password.length > 128) return res.status(400).json({ error: 'Código inválido/expirado ou senha fora do padrão (10 a 128 caracteres).' });
+  const updated = await store.withPlayer(row.player, p => { p.passwordHash = passwordHash(password); return { ok: true }; });
+  if (updated.error) return send(res, updated);
+  await store.deleteChallenge(row.id);
+  const device = String(req.body.deviceId || '');
+  if (validDevice(device)) await store.setIdentity('device', device, row.player);
+  send(res, await loginResponse(row.player, { recovered: true }));
+}));
+app.post('/api/account/phone/start', auth, rateLimit({ windowMs: 3600000, limit: 3 }), wrap(async (req, res) => {
+  const phone = normalizePhone(req.body.phone);
+  if (!validPhone(phone)) return res.status(400).json({ error: 'Informe o telefone com código do país. Ex.: +5511999999999' });
+  const owner = await store.findIdentity('phone', phone);
+  if (owner && owner !== req.pid) return res.status(409).json({ error: 'Este telefone já está vinculado a outra conta.' });
+  const out = await issueAuthChallenge('phone_link', phone, req.pid);
+  send(res, out);
+}));
+app.post('/api/account/phone/verify', auth, rateLimit({ windowMs: 3600000, limit: 8 }), wrap(async (req, res) => {
+  const row = await verifyAuthChallenge(req.body.challengeId, req.body.code, 'phone_link');
+  if (!row || row.player !== req.pid) return res.status(400).json({ error: 'Código inválido ou expirado.' });
+  const owner = await store.findIdentity('phone', row.target);
+  if (owner && owner !== req.pid) return res.status(409).json({ error: 'Este telefone já está vinculado a outra conta.' });
+  await store.setIdentity('phone', row.target, req.pid);
+  await store.withPlayer(req.pid, p => { p.phone = row.target; return { ok: true }; });
+  await store.deleteChallenge(row.id);
+  res.json({ ok: true, phone: row.target });
+}));
+
 // 3) CÓDIGO DE RECUPERAÇÃO: para quem não quer usar Google
 app.post('/api/account/code', auth, wrap(async (req, res) => {
   const ab = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -178,12 +306,19 @@ app.post('/api/auth/recover', rateLimit({ windowMs: 3600000, limit: 10 }), wrap(
 }));
 app.get('/api/account', auth, wrap(async (req, res) => {
   const ids = await store.identitiesOf(req.pid), row = await store.getPlayer(req.pid);
-  res.json({ ok: true, id: req.pid, google: ids.some(i => i.kind === 'google') ? (row.data.email || 'conectado') : null, hasCode: ids.some(i => i.kind === 'code'),
+  res.json({ ok: true, id: req.pid, google: ids.some(i => i.kind === 'google') ? (row.data.email || 'conectado') : null, hasCode: ids.some(i => i.kind === 'code'), emailLogin: ids.some(i => i.kind === 'email'), email: ids.some(i => i.kind === 'email') ? row.data.email : null, hasPhone: ids.some(i => i.kind === 'phone'),
     purchases: (await store.purchasesOf(req.pid)).map(x => ({ product: x.product, at: Number(x.at), state: x.state, provider: x.provider })) });
 }));
 
 // =================== JOGO ===================
 app.get('/api/me', auth, wrap(async (req, res) => send(res, Object.assign(await welcome(req.pid), { playerId: req.pid }))));
+
+app.get('/api/leaderboard', wrap(async (req, res) => {
+  const rows = await store.listPlayers('', 1000);
+  const ranked = rows.filter(x => !x.banned).sort((a,b) => (b.maxLevel|0)-(a.maxLevel|0) || Number(a.created)-Number(b.created)).slice(0,100);
+  res.json({ ok: true, players: ranked.map((p,i) => ({ rank:i+1, name:p.name || 'Guardião', level:p.maxLevel|0 })) });
+}));
+
 
 app.post('/api/level/start', auth, wrap(async (req, res) => {
   let cfg;
@@ -341,7 +476,7 @@ app.get('/api/admin/players', adminOnly, wrap(async (req, res) => {
 app.get('/api/admin/player/:id', adminOnly, wrap(async (req, res) => {
   const row = await store.getPlayer(String(req.params.id));
   if (!row) return res.status(404).json({ error: 'Jogador não encontrado' });
-  res.json({ ok: true, id: row.id, banned: !!Number(row.banned), cheats: Number(row.cheats) | 0, created: Number(row.created), data: row.data,
+  res.json({ ok: true, id: row.id, banned: !!Number(row.banned), cheats: Number(row.cheats) | 0, created: Number(row.created), data: (() => { const safe = Object.assign({}, row.data); delete safe.passwordHash; return safe; })(),
     logins: (await store.identitiesOf(row.id)).map(i => i.kind), purchases: await store.purchasesOf(row.id) });
 }));
 app.post('/api/admin/player/:id', adminOnly, wrap(async (req, res) => {
@@ -380,7 +515,7 @@ app.post('/api/admin/player/:id', adminOnly, wrap(async (req, res) => {
         p.maxLevel = TOTAL_LEVELS;
         return { ok: true };
       case 'reset': {      // começa do zero (mantém nome, e-mail e compras registradas)
-        const keep = { name: p.name, nameSet: p.nameSet, email: p.email };
+        const keep = { name: p.name, nameSet: p.nameSet, email: p.email, phone: p.phone, passwordHash: p.passwordHash };
         for (const k of Object.keys(p)) delete p[k];
         Object.assign(p, Eco.newPlayer(Date.now()), keep);
         return { ok: true };

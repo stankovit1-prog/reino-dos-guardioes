@@ -30,7 +30,22 @@
       <button id="install-btn" class="acc-btn hidden">📲 Instalar no celular</button>
       <a id="admin-btn" class="acc-btn hidden" href="admin.html" style="background:#7a1010;border-color:#ffd43b;text-decoration:none">👑 Painel do Mestre</a>
     </div>
- <div id="news-bar" class="news hidden" style="margin:6px 10px;border:1px solid #ffd43b;text-align:center"></div>
+ <section id="community-panel" class="community-panel" aria-label="Comunidade do reino">
+  <div class="profile-strip"><div class="avatar-orb">🛡️</div><div class="profile-copy"><b id="profile-name">Guardião</b><small id="profile-level">Nível 1 · Iniciante</small></div><button class="mini-link" id="profile-account">Perfil ›</button></div>
+  <h2 class="section-title">⚔️ Escolha sua jornada</h2>
+  <div class="mode-grid">
+    <button class="mode-card primary" data-mode="solo"><span>🏹</span><b>Jogar individual</b><small>Defenda o reino</small></button>
+    <button class="mode-card" data-mode="campaign"><span>🗺️</span><b>Campanha</b><small>Explore os 10 mundos</small></button>
+    <button class="mode-card" data-mode="friends"><span>🤝</span><b>Jogar com amigos</b><small>Convide seus aliados</small></button>
+    <button class="mode-card" data-mode="online"><span>🌐</span><b>Outros jogadores</b><small>Modo online em preparação</small></button>
+    <button class="mode-card" data-mode="tournaments"><span>🏆</span><b>Torneios</b><small>Competições em preparação</small></button>
+  </div>
+  <div class="community-columns">
+    <div class="community-card"><div class="community-heading"><b>🏅 Ranking do reino</b><small>Top jogadores</small></div><ol id="leaderboard-list"><li>Carregando ranking…</li></ol></div>
+    <div class="community-card invite-card"><b>📣 Chame seus amigos</b><p>Compartilhe o convite e forme sua aliança.</p><div class="share-actions"><button id="share-whatsapp">WhatsApp</button><button id="share-facebook">Facebook</button><button id="share-instagram">Instagram</button><button id="share-copy">Copiar link</button></div></div>
+  </div>
+</section>
+<div id="news-bar" class="news hidden" style="margin:6px 10px;border:1px solid #ffd43b;text-align:center"></div>
     <button id="daily-btn" class="daily hidden">🎁 Recompensa diária disponível!</button>
     <button id="free-chest" class="free-chest">📦 <span id="free-chest-t">Baú grátis</span></button>
     <div id="levels"></div>

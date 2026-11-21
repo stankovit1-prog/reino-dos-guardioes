@@ -88,33 +88,110 @@
     };
   });
 
-  // ---------------- CONTA (não perder progresso nem compras) ----------------
+  // ---------------- CONTA (progresso e compras vinculados) ----------------
   async function accountModal() {
     const a = await act(API.account()); if (a.error) return;
     const gcid = (window.GAME_CONFIG || {}).GOOGLE_CLIENT_ID;
     modal(`<h2>👤 Minha conta</h2>
-      <p class="tiny">Seu progresso e suas compras ficam guardados no servidor, na sua conta. Para não perder ao trocar de celular ou passar do site para o app:</p>
-      <div class="news">${a.google ? `✅ Conectado com Google<br><b>${a.google}</b>` : '⚠️ Você está como <b>convidado</b>. Conecte sua conta!'}</div>
-      ${a.google ? '' : `<div id="g-btn" style="display:flex;justify-content:center;margin:8px 0"></div>${gcid || API.demo ? '' : '<p class="tiny">(Login com Google ainda não configurado)</p>'}`}
-      <button class="btn gold" id="m-code" style="width:100%;margin-top:6px">🔑 ${a.hasCode ? 'Gerar novo' : 'Criar'} código de recuperação</button>
-      <button class="btn" id="m-rec" style="width:100%;margin-top:6px">📲 Recuperar conta com código</button>
-      ${a.id ? `<p class="tiny" style="margin-top:10px">ID da conta: <b style="user-select:all;-webkit-user-select:all">${a.id}</b></p>` : ''}
-      ${a.purchases && a.purchases.length ? `<p class="tiny" style="margin-top:10px">Compras na conta: ${a.purchases.filter(x => x.state === 'ok').length}</p>` : ''}
+      <p class="tiny">Proteja seu progresso e suas compras para acessar em outro celular ou computador.</p>
+      <div class="news">${a.google ? `✅ Google conectado: <b>${String(a.google).replace(/[<>&"]/g, '')}</b>` : a.emailLogin ? `✅ E-mail protegido: <b>${String(a.email || '').replace(/[<>&"]/g, '')}</b>` : '⚠️ Conta de convidado. Vincule um método de acesso para proteger seu progresso.'}</div>
+      ${a.google ? '' : '<div id="g-btn" style="display:flex;justify-content:center;margin:8px 0"></div>'}
+      <button class="btn gold" id="m-email" style="width:100%;margin-top:6px">✉️ Entrar ou cadastrar com e-mail</button>
+      <button class="btn" id="m-recovery" style="width:100%;margin-top:6px">🔐 Esqueci minha senha</button>
+      <button class="btn" id="m-phone" style="width:100%;margin-top:6px">📱 ${a.hasPhone ? 'Gerenciar telefone SMS' : 'Vincular telefone para recuperação SMS'}</button>
+      <button class="btn" id="m-code" style="width:100%;margin-top:6px">🔑 ${a.hasCode ? 'Gerar novo código' : 'Criar código de recuperação'}</button>
+      <button class="btn" id="m-rec" style="width:100%;margin-top:6px">📲 Recuperar com código</button>
+      ${a.id ? `<p class="tiny" style="margin-top:10px">ID da conta: <b style="user-select:all">${a.id}</b></p>` : ''}
+      ${a.purchases && a.purchases.length ? `<p class="tiny">Compras na conta: ${a.purchases.filter(x => x.state === 'ok').length}</p>` : ''}
       <button class="btn" onclick="closeModal()" style="width:100%;margin-top:8px;background:#555;box-shadow:none">Fechar</button>`);
     if (!a.google) googleButton($('g-btn'));
+    $('m-email').onclick = emailAccessModal;
+    $('m-recovery').onclick = passwordRecoveryModal;
+    $('m-phone').onclick = phoneLinkModal;
     $('m-code').onclick = async () => {
       const o = await act(API.newCode()); if (!o.ok) return;
-      modal(`<h2>🔑 Seu código</h2><p>Anote ou tire print. Com ele você entra na sua conta em qualquer celular, no site ou no app.</p>
-        <div class="news" style="text-align:center;font-size:22px;font-weight:800;letter-spacing:1px;user-select:all;-webkit-user-select:all">${o.code}</div>
-        <p class="tiny">Não mostre para ninguém. Criar um novo código cancela o anterior.</p>
-        <button class="btn gold" id="m-cc" style="width:100%">📋 Copiar</button><button class="btn" onclick="closeModal()" style="width:100%;margin-top:6px;background:#555;box-shadow:none">Pronto</button>`);
-      $('m-cc').onclick = () => { try { navigator.clipboard.writeText(o.code); toast('Copiado!'); } catch (e) { toast('Selecione e copie o código'); } };
+      modal(`<h2>🔑 Seu código</h2><p>Anote e guarde em local seguro. O código permite recuperar sua conta em outro aparelho.</p>
+        <div class="news" style="text-align:center;font-size:22px;font-weight:800;letter-spacing:1px;user-select:all">${o.code}</div>
+        <p class="tiny">Criar um novo código cancela o anterior.</p>
+        <button class="btn gold" id="m-cc" style="width:100%">📋 Copiar</button><button class="btn" onclick="closeModal()" style="width:100%;margin-top:6px">Pronto</button>`);
+      $('m-cc').onclick = () => { navigator.clipboard?.writeText(o.code).then(() => toast('Copiado!')).catch(() => toast('Selecione e copie o código')); };
     };
     $('m-rec').onclick = () => {
-      modal(`<h2>📲 Recuperar conta</h2><p>Digite o código de recuperação:</p><input id="m-rc" class="inp" placeholder="RG-XXXX-XXXX-XXXX" style="text-transform:uppercase;text-align:center;font-size:18px">
-        <p class="tiny">⚠️ O progresso de convidado deste aparelho será trocado pela conta do código.</p>
-        <button class="btn gold" id="m-rgo" style="width:100%">Entrar</button><button class="btn" onclick="closeModal()" style="width:100%;margin-top:6px;background:#555;box-shadow:none">Cancelar</button>`);
-      $('m-rgo').onclick = async () => { const o = await act(API.recover($('m-rc').value)); if (o.ok !== false && o.token) { liveInfo(o); closeModal(); toast('Conta recuperada! 🎉'); go('home'); } };
+      modal(`<h2>📲 Recuperar conta</h2><p>Digite seu código de recuperação:</p><input id="m-rc" class="inp" placeholder="RG-XXXX-XXXX-XXXX" style="text-transform:uppercase;text-align:center;font-size:18px">
+        <p class="tiny">O progresso e as compras da conta recuperada serão mantidos.</p>
+        <button class="btn gold" id="m-rgo" style="width:100%">Entrar</button><button class="btn" onclick="closeModal()" style="width:100%;margin-top:6px">Cancelar</button>`);
+      $('m-rgo').onclick = async () => { const o = await act(API.recover($('m-rc').value)); if (o.token) { liveInfo(o); closeModal(); toast('Conta recuperada! 🎉'); go('home'); renderCommunity(); } };
+    };
+  }
+
+  function emailAccessModal() {
+    modal(`<h2>✉️ Acesso por e-mail</h2>
+      <p class="tiny">Entre com uma conta existente ou cadastre seu e-mail para vincular o progresso atual.</p>
+      <label class="tiny">E-mail</label><input id="ea-email" class="inp" type="email" autocomplete="email" placeholder="voce@exemplo.com">
+      <label class="tiny">Senha (mínimo 10 caracteres)</label><input id="ea-password" class="inp" type="password" autocomplete="current-password" placeholder="Sua senha">
+      <button class="btn gold" id="ea-login" style="width:100%;margin-top:8px">Entrar</button>
+      <button class="btn" id="ea-register" style="width:100%;margin-top:6px">Cadastrar e vincular esta conta</button>
+      <button class="btn" onclick="closeModal()" style="width:100%;margin-top:6px">Voltar</button>`);
+    $('ea-login').onclick = async () => {
+      const o = await act(API.emailLogin($('ea-email').value, $('ea-password').value));
+      if (o.token) { liveInfo(o); closeModal(); toast('Login realizado! Progresso carregado.'); go('home'); renderCommunity(); }
+    };
+    $('ea-register').onclick = async () => {
+      const o = await act(API.emailStart($('ea-email').value, $('ea-password').value));
+      if (!o.challengeId) return;
+      const challengeId = o.challengeId;
+      modal(`<h2>Confirme seu e-mail</h2><p>Enviamos um código de seis dígitos para o endereço informado. Ele expira em 10 minutos.</p>
+        <input id="ea-code" class="inp" inputmode="numeric" maxlength="6" placeholder="000000" style="text-align:center;font-size:22px;letter-spacing:5px">
+        <button class="btn gold" id="ea-confirm" style="width:100%;margin-top:8px">Confirmar e proteger minha conta</button>
+        <button class="btn" onclick="closeModal()" style="width:100%;margin-top:6px">Cancelar</button>`);
+      $('ea-confirm').onclick = async () => {
+        const done = await act(API.emailVerify(challengeId, $('ea-code').value));
+        if (done.token) { liveInfo(done); closeModal(); toast('E-mail confirmado! Sua conta está protegida.'); go('home'); renderCommunity(); }
+      };
+    };
+  }
+
+  function passwordRecoveryModal() {
+    modal(`<h2>🔐 Recuperar senha</h2><p>Escolha por onde receber o código. O contato precisa estar vinculado à sua conta.</p>
+      <select id="pr-channel" class="inp"><option value="email">E-mail</option><option value="sms">SMS</option></select>
+      <input id="pr-contact" class="inp" placeholder="E-mail cadastrado" autocomplete="email">
+      <button class="btn gold" id="pr-send" style="width:100%;margin-top:8px">Enviar código</button>
+      <button class="btn" onclick="closeModal()" style="width:100%;margin-top:6px">Cancelar</button>`);
+    $('pr-channel').onchange = () => { $('pr-contact').value = ''; $('pr-contact').placeholder = $('pr-channel').value === 'sms' ? '+5511999999999' : 'E-mail cadastrado'; $('pr-contact').type = $('pr-channel').value === 'sms' ? 'tel' : 'email'; };
+    $('pr-send').onclick = async () => {
+      const channel = $('pr-channel').value;
+      const out = await act(API.recoveryStart(channel, $('pr-contact').value));
+      if (!out.ok) return;
+      if (!out.challengeId) return toast('Se a conta existir, você receberá as instruções no contato cadastrado.');
+      const challengeId = out.challengeId;
+      modal(`<h2>Defina uma nova senha</h2><p>Digite o código recebido e escolha uma senha nova (10 a 128 caracteres).</p>
+        <input id="pr-code" class="inp" inputmode="numeric" maxlength="6" placeholder="Código de 6 dígitos">
+        <input id="pr-password" class="inp" type="password" autocomplete="new-password" placeholder="Nova senha">
+        <button class="btn gold" id="pr-confirm" style="width:100%;margin-top:8px">Confirmar nova senha</button>
+        <button class="btn" onclick="closeModal()" style="width:100%;margin-top:6px">Cancelar</button>`);
+      $('pr-confirm').onclick = async () => {
+        const done = await act(API.recoveryVerify(challengeId, $('pr-code').value, $('pr-password').value));
+        if (done.token) { liveInfo(done); closeModal(); toast('Senha redefinida e conta recuperada!'); go('home'); renderCommunity(); }
+      };
+    };
+  }
+
+  function phoneLinkModal() {
+    modal(`<h2>📱 Vincular telefone</h2><p>Adicione um número com código do país para permitir recuperação por SMS.</p>
+      <input id="ph-number" class="inp" type="tel" placeholder="+5511999999999">
+      <button class="btn gold" id="ph-send" style="width:100%;margin-top:8px">Enviar código SMS</button>
+      <button class="btn" onclick="closeModal()" style="width:100%;margin-top:6px">Cancelar</button>`);
+    $('ph-send').onclick = async () => {
+      const out = await act(API.phoneStart($('ph-number').value));
+      if (!out.challengeId) return;
+      const challengeId = out.challengeId;
+      modal(`<h2>Confirmar telefone</h2><p>Digite o código de seis dígitos recebido por SMS.</p>
+        <input id="ph-code" class="inp" inputmode="numeric" maxlength="6" placeholder="000000">
+        <button class="btn gold" id="ph-confirm" style="width:100%;margin-top:8px">Confirmar telefone</button>`);
+      $('ph-confirm').onclick = async () => {
+        const done = await act(API.phoneVerify(challengeId, $('ph-code').value));
+        if (done.ok) { closeModal(); toast('Telefone vinculado para recuperação SMS!'); }
+      };
     };
   }
   // Botão "Entrar com Google": no site usa Google Identity; no app Android usa o plugin de login
@@ -135,7 +212,57 @@
     if (window.google && window.google.accounts) return start();
     const s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.async = true; s.onload = start; document.head.appendChild(s);
   }
+
+
+  // Feedback visual imediato nos ícones e links, sem bloquear a jogabilidade.
+  document.addEventListener('click', ev => {
+    const link = ev.target.closest('a[href]');
+    if (link && link.target !== '_blank' && link.getAttribute('href') !== '#') $('loading').classList.remove('hidden');
+    const button = ev.target.closest('button');
+    if (button && !button.disabled) {
+      button.classList.add('tap-busy');
+      setTimeout(() => button.classList.remove('tap-busy'), 650);
+    }
+  }, true);
   $('acc-btn').onclick = () => accountModal();
+  $('profile-account').onclick = () => accountModal();
+
+  // Perfil, ranking e convites usam os dados reais do jogador e do servidor.
+  function renderCommunity() {
+    if (!P) return;
+    const level = Math.max(1, (P.maxLevel | 0) + 1);
+    $('profile-name').textContent = P.name || 'Guardião';
+    $('profile-level').textContent = 'Nível ' + level + ' · ' + (P.maxLevel >= 40 ? 'Veterano' : P.maxLevel >= 10 ? 'Explorador' : 'Iniciante');
+    const list = $('leaderboard-list');
+    if (!list) return;
+    list.innerHTML = '<li>Carregando ranking…</li>';
+    API.leaderboard().then(out => {
+      if (out.error || !Array.isArray(out.players) || !out.players.length) {
+        list.innerHTML = '<li>Ranking indisponível no momento.</li>'; return;
+      }
+      list.innerHTML = out.players.slice(0, 10).map(p => '<li><span>' + (p.rank <= 3 ? ['🥇','🥈','🥉'][p.rank - 1] : '#' + p.rank) + '</span><span>' + String(p.name || 'Guardião').replace(/[<>&"]/g, '') + '</span><b>Nível ' + (p.level + 1) + '</b></li>').join('');
+    }).catch(() => { list.innerHTML = '<li>Não foi possível carregar o ranking.</li>'; });
+  }
+  function inviteUrl() { return location.href.split('#')[0]; }
+  function inviteText() { return 'Venha defender o reino comigo em Reino dos Guardiões! ' + inviteUrl(); }
+  function shareFallback() {
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(inviteText()).then(() => toast('Convite copiado!'));
+    toast('Copie o endereço do jogo para convidar seus amigos.');
+  }
+  $('share-whatsapp').onclick = () => window.open('https://wa.me/?text=' + encodeURIComponent(inviteText()), '_blank', 'noopener');
+  $('share-facebook').onclick = () => window.open('https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(inviteUrl()), '_blank', 'noopener');
+  $('share-instagram').onclick = async () => {
+    try { if (navigator.share) await navigator.share({ title: 'Reino dos Guardiões', text: inviteText(), url: inviteUrl() }); else await shareFallback(); }
+    catch (e) { if (e.name !== 'AbortError') shareFallback(); }
+  };
+  $('share-copy').onclick = shareFallback;
+  document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => {
+    const mode = b.dataset.mode;
+    if (mode === 'solo' || mode === 'campaign') { go('home'); $('levels').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+    if (mode === 'friends') { $('share-whatsapp').click(); return; }
+    toast(mode === 'online' ? 'Partidas online ainda precisam da infraestrutura de salas e sincronização.' : 'Torneios serão liberados após a implementação do modo multiplayer.');
+  }));
+
 
   // ---------------- mapa de fases ----------------
   function renderLevels() {
@@ -1273,6 +1400,7 @@
     $('topbar').appendChild(window.Sound ? Sound.button() : document.createElement('i'));
     if (window.Sound) $('g-speed').after(Sound.button());
     go('home');
+    renderCommunity();
     resumePay();
     if (!API.demo && P.maxLevel >= 3 && !P.email && !(function () { try { return localStorage.getItem('rg_accwarn'); } catch (e) { return 1; } })()) { try { localStorage.setItem('rg_accwarn', '1'); } catch (e) {} setTimeout(() => toast('💡 Proteja seu progresso: toque em 👤 Conta'), 1500); }
   })();

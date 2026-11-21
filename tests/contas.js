@@ -10,6 +10,9 @@ const srv = app.listen(0, async () => {
   // Celular 1 joga e compra
   const c1 = mk();
   const a = await c1('/api/auth/guest', { deviceId: '1'.repeat(40) });
+  const ranking = await c1('/api/leaderboard');
+  ok(ranking.ok && Array.isArray(ranking.players) && ranking.players.some(p => p.level === 0), 'ranking público retorna jogadores sem expor dados privados');
+
   const code = (await c1('/api/account/code', {})).code;
   ok(/^RG-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code), 'código de recuperação gerado: ' + code);
 
