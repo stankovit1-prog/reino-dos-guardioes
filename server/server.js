@@ -33,6 +33,8 @@ const secureRand = () => crypto.randomInt(0, 1000000000) / 1000000000;
 
 const store = createStore();
 const ready = store.init().then(loadLive);
+// Salas multiplayer cooperativas temporárias; não alteram nem substituem dados das contas.
+const multiRooms = new Map();
 
 // ---------- USUÁRIO MESTRE ----------
 // Somente contas autenticadas com um Gmail listado em ADMIN_EMAILS recebem acesso ao painel.
@@ -308,6 +310,272 @@ app.get('/api/account', auth, wrap(async (req, res) => {
   const ids = await store.identitiesOf(req.pid), row = await store.getPlayer(req.pid);
   res.json({ ok: true, id: req.pid, google: ids.some(i => i.kind === 'google') ? (row.data.email || 'conectado') : null, hasCode: ids.some(i => i.kind === 'code'), emailLogin: ids.some(i => i.kind === 'email'), email: ids.some(i => i.kind === 'email') ? row.data.email : null, hasPhone: ids.some(i => i.kind === 'phone'),
     purchases: (await store.purchasesOf(req.pid)).map(x => ({ product: x.product, at: Number(x.at), state: x.state, provider: x.provider })) });
+}));
+
+// =================== MULTIPLAYER COOPERATIVO ===================
+const MULTI_CAPACITY = 4;
+const MULTI_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function pruneMultiRooms() {
+  const now = Date.now();
+  for (const [code, room] of multiRooms) {
+    const ttl = room.status === 'playing' ? 90000 : room.status === 'waiting' ? 1800000 : 600000;
+    if (now - room.updatedAt > ttl) multiRooms.delete(code);
+  }
+}
+function newMultiCode() {
+  let code;
+  do {
+    code = '';
+    for (let i = 0; i < 6; i++) code += MULTI_ALPHABET[crypto.randomInt(0, MULTI_ALPHABET.length)];
+  } while (multiRooms.has(code));
+  return code;
+}
+function multiMember(room, pid) {
+  return room.players.find(p => p.pid === pid && !p.left) || null;
+}
+function multiPublic(room, pid) {
+  const member = multiMember(room, pid);
+  const out = {
+    ok: true,
+    room: {
+      code: room.code, status: room.status, level: room.level || null,
+      maxPlayers: MULTI_CAPACITY, isHost: pid === room.hostPid,
+      players: room.players.filter(p => !p.left).map(p => ({
+        name: p.name, isHost: p.pid === room.hostPid
+      }))
+    },
+    cfg: room.cfg || null,
+    runId: member ? member.runId : null,
+    snapshot: room.snapshot || null,
+    result: room.result || null
+  };
+  if (pid === room.hostPid) out.actions = room.actions;
+  return out;
+}
+async function multiPlayerView(pid) {
+  const row = await store.getPlayer(pid);
+  return row ? Eco.publicView(row.data, Date.now()) : null;
+}
+
+app.get('/api/multi/rooms', auth, wrap(async (req, res) => {
+  pruneMultiRooms();
+  const rooms = Array.from(multiRooms.values()).filter(r =>
+    r.status === 'waiting' && r.players.filter(p => !p.left).length < MULTI_CAPACITY
+  ).map(r => ({
+    code: r.code,
+    host: r.players.find(p => p.pid === r.hostPid)?.name || 'Guardião',
+    players: r.players.filter(p => !p.left).length,
+    maxPlayers: MULTI_CAPACITY
+  }));
+  res.json({ ok: true, rooms });
+}));
+
+app.post('/api/multi/create', auth, wrap(async (req, res) => {
+  pruneMultiRooms();
+  const row = await store.getPlayer(req.pid);
+  const code = newMultiCode();
+  const name = String(row && row.data.name || 'Guardião').replace(/[<>&"]/g, '').slice(0, 16);
+  const room = {
+    code, hostPid: req.pid, status: 'waiting', level: null, cfg: null,
+    players: [{ pid: req.pid, name, runId: null, left: false }],
+    queue: [], nextSeq: 0, actions: [], snapshot: null, result: null, updatedAt: Date.now()
+  };
+  multiRooms.set(code, room);
+  res.json(multiPublic(room, req.pid));
+}));
+
+app.post('/api/multi/join', auth, wrap(async (req, res) => {
+  pruneMultiRooms();
+  const code = String(req.body.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const room = multiRooms.get(code);
+  if (!room) return res.status(404).json({ error: 'Sala não encontrada. Confira o código.' });
+  if (room.status !== 'waiting') return res.status(400).json({ error: 'Essa batalha já começou.' });
+  let member = multiMember(room, req.pid);
+  if (!member && room.players.filter(p => !p.left).length >= MULTI_CAPACITY) {
+    return res.status(400).json({ error: 'Sala cheia. O máximo é 4 jogadores.' });
+  }
+  if (!member) {
+    const row = await store.getPlayer(req.pid);
+    const name = String(row && row.data.name || 'Guardião').replace(/[<>&"]/g, '').slice(0, 16);
+    member = { pid: req.pid, name, runId: null, left: false };
+    room.players.push(member);
+  }
+  room.updatedAt = Date.now();
+  res.json(multiPublic(room, req.pid));
+}));
+
+app.get('/api/multi/state', auth, wrap(async (req, res) => {
+  pruneMultiRooms();
+  const code = String(req.query.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const room = multiRooms.get(code);
+  if (!room || !multiMember(room, req.pid)) return res.status(404).json({ error: 'Você não está nessa sala.' });
+  room.updatedAt = Date.now();
+  const out = multiPublic(room, req.pid);
+  out.player = await multiPlayerView(req.pid);
+  res.json(out);
+}));
+
+app.post('/api/multi/start', auth, wrap(async (req, res) => {
+  const code = String(req.body.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const room = multiRooms.get(code);
+  if (!room || !multiMember(room, req.pid)) return res.status(404).json({ error: 'Sala não encontrada.' });
+  if (room.hostPid !== req.pid) return res.status(403).json({ error: 'Somente o líder pode iniciar a batalha.' });
+  if (room.status !== 'waiting') return res.status(400).json({ error: 'A sala já foi iniciada.' });
+  const members = room.players.filter(p => !p.left);
+  if (members.length < 2) return res.status(400).json({ error: 'Convide pelo menos mais um jogador para começar.' });
+  const level = Number(req.body.level);
+  if (!Number.isInteger(level) || level < 1) return res.status(400).json({ error: 'Fase inválida.' });
+  const now = Date.now();
+  let sharedCfg = null;
+  // Valida fase e energia de todos antes de cobrar energia de qualquer conta.
+  for (const member of members) {
+    const row = await store.getPlayer(member.pid);
+    if (!row || row.banned) return res.status(400).json({ error: 'Um dos jogadores não pode participar desta sala.' });
+    const preview = JSON.parse(JSON.stringify(row.data));
+    Eco.migrate(preview, now);
+    const check = Eco.startLevel(preview, level, now, false, undefined);
+    if (check.error) return res.status(400).json({ error: member.name + ': ' + check.error });
+    if (member.pid === room.hostPid) sharedCfg = check.cfg;
+  }
+  for (const member of members) {
+    const spent = await mutate(member.pid, p => Eco.startLevel(p, level, Date.now(), false, undefined));
+    if (spent.error) return res.status(400).json({ error: member.name + ': ' + spent.error });
+    member.runId = crypto.randomUUID();
+    await store.insertRun(member.runId, member.pid, sharedCfg);
+  }
+  room.status = 'playing';
+  room.level = level;
+  room.cfg = sharedCfg;
+  room.queue = [];
+  room.nextSeq = 0;
+  room.actions = [];
+  room.snapshot = null;
+  room.result = null;
+  room.updatedAt = Date.now();
+  const out = multiPublic(room, req.pid);
+  out.player = await multiPlayerView(req.pid);
+  res.json(out);
+}));
+
+app.post('/api/multi/action', auth, wrap(async (req, res) => {
+  const code = String(req.body.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const room = multiRooms.get(code);
+  const member = room && multiMember(room, req.pid);
+  if (!room || !member || room.status !== 'playing') {
+    return res.status(400).json({ error: 'A batalha não está recebendo comandos.' });
+  }
+  const raw = req.body.action;
+  const allowed = ['build', 'up', 'sell', 'repair', 'wave', 'trap', 'open', 'secret', 'relic'];
+  if (!raw || typeof raw !== 'object' || !allowed.includes(raw.a)) {
+    return res.status(400).json({ error: 'Comando de jogo inválido.' });
+  }
+  const action = { a: raw.a };
+  if (['build', 'trap', 'open', 'secret', 'relic'].includes(raw.a)) {
+    action.x = Number(raw.x);
+    action.y = Number(raw.y);
+    if (!Number.isInteger(action.x) || !Number.isInteger(action.y) ||
+        action.x < 0 || action.x >= Sim.COLS || action.y < 0 || action.y >= Sim.ROWS) {
+      return res.status(400).json({ error: 'Posição inválida.' });
+    }
+  }
+  if (raw.a === 'build' || raw.a === 'trap') {
+    action.k = String(raw.k || '').slice(0, 40);
+    if (!/^[a-z0-9_]+$/.test(action.k)) return res.status(400).json({ error: 'Item inválido.' });
+  }
+  if (['up', 'sell', 'repair'].includes(raw.a)) {
+    action.id = Number(raw.id);
+    if (!Number.isInteger(action.id) || action.id < 1) return res.status(400).json({ error: 'Alvo inválido.' });
+  }
+  if (room.queue.length >= 100) return res.status(429).json({ error: 'Muitos comandos pendentes. Aguarde um instante.' });
+  room.queue.push({ seq: ++room.nextSeq, name: member.name, action });
+  room.updatedAt = Date.now();
+  res.json({ ok: true, queued: true });
+}));
+
+app.post('/api/multi/sync', auth, wrap(async (req, res) => {
+  const code = String(req.body.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const room = multiRooms.get(code);
+  if (!room || room.hostPid !== req.pid || room.status !== 'playing') {
+    return res.status(400).json({ error: 'O líder não está conectado à batalha.' });
+  }
+  const snapshot = req.body.snapshot;
+  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) {
+    return res.status(400).json({ error: 'Estado da partida inválido.' });
+  }
+  if (Buffer.byteLength(JSON.stringify(snapshot), 'utf8') > 160000) {
+    return res.status(413).json({ error: 'Estado da partida muito grande.' });
+  }
+  room.snapshot = snapshot;
+  if (Array.isArray(req.body.actions) && req.body.actions.length <= 5000) room.actions = req.body.actions;
+  const cursor = Math.max(0, Number(req.body.cursor) | 0);
+  room.queue = room.queue.filter(item => item.seq > cursor);
+  room.updatedAt = Date.now();
+  res.json({ ok: true, requests: room.queue.slice(), cursor: room.nextSeq });
+}));
+
+app.post('/api/multi/finish', auth, wrap(async (req, res) => {
+  const code = String(req.body.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const room = multiRooms.get(code);
+  if (!room || room.hostPid !== req.pid || room.status !== 'playing') {
+    return res.status(400).json({ error: 'Batalha não encontrada ou já encerrada.' });
+  }
+  const actions = req.body.actions;
+  if (!Array.isArray(actions) || actions.length > 5000) return res.status(400).json({ error: 'Ações da partida inválidas.' });
+  room.status = 'finishing';
+  room.updatedAt = Date.now();
+  let hostOut = null;
+  const team = [];
+  for (const member of room.players.filter(p => !p.left)) {
+    const run = await store.takeRun(String(member.runId || ''), member.pid);
+    if (!run) {
+      team.push({ name: member.name, ok: false });
+      continue;
+    }
+    const out = await mutate(member.pid, p => {
+      const result = Eco.finishLevel(p, { cfg: run.cfg, startedAt: Number(run.started) }, actions, Date.now(), secureRand);
+      if (result.ok && result.status === 'won') {
+        const extraCoins = Math.floor((result.coins | 0) * (LIVE.coinMul - 1));
+        const extraGems = Math.floor((result.gems | 0) * (LIVE.gemMul - 1));
+        if (extraCoins > 0 || extraGems > 0) {
+          p.coins += extraCoins; p.gems += extraGems;
+          result.coins += extraCoins; result.gems += extraGems; result.event = true;
+        }
+      }
+      return result;
+    });
+    if (out.cheat) {
+      await store.addCheat(member.pid);
+      console.warn('[anti-hack multiplayer]', member.pid, out.error);
+    }
+    team.push({ name: member.name, ok: !!out.ok, status: out.status || null, stars: out.stars || 0 });
+    if (member.pid === room.hostPid) hostOut = out;
+  }
+  if (!hostOut || hostOut.error) {
+    room.status = 'abandoned';
+    room.result = { abandoned: true, won: false };
+    return res.status(400).json({ error: hostOut && hostOut.error || 'Não foi possível validar a batalha da equipe.' });
+  }
+  room.status = 'finished';
+  room.result = { won: hostOut.status === 'won', status: hostOut.status, stars: hostOut.stars || 0, team };
+  room.updatedAt = Date.now();
+  res.json(Object.assign({}, hostOut, { team, roomStatus: 'finished' }));
+}));
+
+app.post('/api/multi/leave', auth, wrap(async (req, res) => {
+  const code = String(req.body.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const room = multiRooms.get(code);
+  const member = room && multiMember(room, req.pid);
+  if (!room || !member) return res.json({ ok: true });
+  if (room.status === 'waiting' && room.hostPid === req.pid) multiRooms.delete(code);
+  else if (room.status === 'playing' && room.hostPid === req.pid) {
+    room.status = 'abandoned';
+    room.result = { abandoned: true, won: false };
+    room.updatedAt = Date.now();
+  } else {
+    member.left = true;
+    room.updatedAt = Date.now();
+  }
+  res.json({ ok: true });
 }));
 
 // =================== JOGO ===================
