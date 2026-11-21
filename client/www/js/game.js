@@ -282,8 +282,17 @@
       return;
     }
     if (API.demo) { el.innerHTML = '<button class="btn" style="background:#fff;color:#333;box-shadow:0 3px 0 #999;width:100%">🇬 Entrar com Google</button>'; el.firstChild.onclick = () => toast('No jogo online, aqui entra com sua conta Google'); return; }
-    if (!gcid) return;
-    const start = () => { try { google.accounts.id.initialize({ client_id: gcid, callback: (r) => done(r.credential) }); google.accounts.id.renderButton(el, { theme: 'filled_black', size: 'large', text: 'signin_with', shape: 'pill' }); } catch (e) {} };
+    if (!gcid) {
+      el.innerHTML = '<button type="button" class="btn google-login-needed" style="width:100%;background:#fff;color:#333;box-shadow:0 3px 0 #aaa">🌐 Entrar com Google</button><p class="tiny google-login-note">O botão está pronto, mas falta cadastrar o ID OAuth do jogo no servidor para abrir a escolha da sua conta Gmail.</p>';
+      el.querySelector('button').onclick = () => toast('Falta configurar o ID OAuth do Google no servidor. O progresso atual não será perdido.');
+      return;
+    }
+    const start = () => {
+      try {
+        google.accounts.id.initialize({ client_id: gcid, callback: (r) => done(r.credential), auto_select: false });
+        google.accounts.id.renderButton(el, { theme: 'filled_black', size: 'large', text: 'signin_with', shape: 'pill', width: 280 });
+      } catch (e) { toast('Não foi possível abrir o login Google.'); }
+    };
     if (window.google && window.google.accounts) return start();
     const s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.async = true; s.onload = start; document.head.appendChild(s);
   }
@@ -385,6 +394,20 @@
     const secTxt = sec === 'found' ? '' : sec === 'done' ? '<p class="tiny">✅ Fase secreta concluída</p>'
       : Sim.hasSecret(l) ? '<div class="news" style="border:1px dashed #b197fc">🔍 Dizem que existe um <b>lugar misterioso</b> escondido neste mapa... toque nele!</div>' : '';
     const Wd = Sim.worldInfo(l), li = (l - 1) % Sim.LEVELS_PER_WORLD + 1;
+    const availableWeapons = (Array.isArray(P.owned) ? P.owned : []).filter(k => !!T[k]);
+    const saved = P.loadouts && Array.isArray(P.loadouts[String(l)]) ? P.loadouts[String(l)] : [];
+    let selectedLoadout = (saved.length ? saved : availableWeapons).filter((k, i, a) => availableWeapons.includes(k) && a.indexOf(k) === i).slice(0, 6);
+    if (!selectedLoadout.length) selectedLoadout = availableWeapons.slice(0, 6);
+    const loadoutHtml = availableWeapons.length
+      ? availableWeapons.map(k => {
+          const t = T[k], color = Sim.RARITIES[t.rar].color;
+          const selected = selectedLoadout.includes(k);
+          return `<button type="button" class="loadout-card ${selected ? 'selected' : ''}" data-loadout="${k}" aria-pressed="${selected}" style="--loadout-color:${color}">
+            <span class="loadout-check">${selected ? '✓' : '+'}</span><span class="loadout-icon">${t.icon}</span>
+            <span class="loadout-name">${t.name}</span><small>${Sim.RARITIES[t.rar].name}</small>
+          </button>`;
+        }).join('')
+      : '<p class="tiny">Nenhuma arma desbloqueada ainda.</p>';
     modal(`<h2>Fase ${l}${Sim.isBossLevel(l) ? ' 👑' : ''}</h2>
       <p class="tiny">${Wd.icon} Mundo ${Wd.num} — ${Wd.name} · fase ${li} de ${Sim.LEVELS_PER_WORLD}</p>
       <p>${waves} ondas de monstros${Sim.isBossLevel(l) ? ' + CHEFÃO' : ''}.<br>Não deixe chegarem ao castelo!</p>
@@ -393,15 +416,43 @@
       ${monsterNews(l)}${secTxt}
       ${(l - 1) % Sim.LEVELS_PER_WORLD + 1 === 25 && !(P.relics || {})[l] ? '<div class="news" style="border:1px dashed #c92a2a">🗡️ Uma <b>ARMA SECRETA</b> está escondida neste mapa. Procure a relíquia brilhando!</div>' : ''}
       ${l > P.maxLevel && E.milestone(l) ? `<div class="news" style="border:1px solid #ffd43b">🎁 Recompensa especial ao vencer: <b>${E.CHESTS[E.milestone(l)].icon} ${E.CHESTS[E.milestone(l)].name}</b></div>` : ''}
+      <section class="loadout-picker">
+        <div class="loadout-heading"><b>⚔️ Escolha suas armas</b><span id="loadout-count">${selectedLoadout.length}/6 selecionadas</span></div>
+        <p>Use de 1 a 6 armas nesta fase. Sua escolha fica salva para este mapa.</p>
+        <div id="loadout-grid" class="loadout-grid">${loadoutHtml}</div>
+      </section>
       ${sec === 'found' ? `<button class="btn secret-btn" id="m-bonus">🗝️ Entrar na FASE SECRETA <small>(grátis, 1 vez)</small></button>` : ''}
       <div class="row"><button class="btn" onclick="closeModal()" style="background:#555;box-shadow:none">Voltar</button>
       <button class="btn gold" id="m-play">Jogar ⚡1</button></div>`);
-    $('m-play').onclick = () => { closeModal(); startLevel(l); };
+    const grid = $('loadout-grid');
+    const updateLoadoutUI = () => {
+      $('loadout-count').textContent = selectedLoadout.length + '/6 selecionadas';
+      grid.querySelectorAll('[data-loadout]').forEach(b => {
+        const selected = selectedLoadout.includes(b.dataset.loadout);
+        b.classList.toggle('selected', selected);
+        b.setAttribute('aria-pressed', selected ? 'true' : 'false');
+        b.querySelector('.loadout-check').textContent = selected ? '✓' : '+';
+      });
+    };
+    grid.querySelectorAll('[data-loadout]').forEach(b => b.onclick = () => {
+      const key = b.dataset.loadout;
+      if (selectedLoadout.includes(key)) selectedLoadout = selectedLoadout.filter(k => k !== key);
+      else {
+        if (selectedLoadout.length >= 6) return toast('Você pode levar no máximo 6 armas por fase.');
+        selectedLoadout.push(key);
+      }
+      updateLoadoutUI();
+    });
+    $('m-play').onclick = () => {
+      if (!selectedLoadout.length) return toast('Escolha pelo menos uma arma para jogar.');
+      closeModal(); startLevel(l, false, selectedLoadout.slice());
+    };
     if ($('m-bonus')) $('m-bonus').onclick = () => {
+      if (!selectedLoadout.length) return toast('Escolha pelo menos uma arma para entrar na fase secreta.');
       modal(`<h2>🗝️ Caverna do Tesouro</h2><p>Goblins Ladrões estão fugindo com o tesouro do reino!<br>Derrote o máximo que puder. Cada um vale moedas, e pegar <b>todos</b> dá 💎8.</p>
-        <p class="tiny">Você só pode jogar esta fase secreta uma vez.</p>
+        <p class="tiny">Você só pode jogar esta fase secreta uma vez. As armas escolhidas serão usadas nesta tentativa.</p>
         <div class="row"><button class="btn" onclick="closeModal()" style="background:#555;box-shadow:none">Depois</button><button class="btn secret-btn" id="m-go">Entrar!</button></div>`);
-      $('m-go').onclick = () => { closeModal(); startLevel(l, true); };
+      $('m-go').onclick = () => { closeModal(); startLevel(l, true, selectedLoadout.slice()); };
     };
   }
 
@@ -613,8 +664,8 @@
   }
   window.addEventListener('resize', () => G && resize());
 
-  async function startLevel(l, bonus) {
-    const o = await act(API.start(l, bonus));
+  async function startLevel(l, bonus, loadout) {
+    const o = await act(API.start(l, bonus, loadout));
     if (!o.ok) {
       if (o.error === 'Sem energia') $('r-energy').click();
       return;
