@@ -59,8 +59,55 @@ const tokenFor = (pid) => jwt.sign({ sub: pid }, SECRET, { expiresIn: '180d' });
 const sha = (s) => crypto.createHash('sha256').update(String(s)).digest('hex');
 const passwordHash = (password) => {
   const salt = crypto.randomBytes(16).toString('hex');
-  return 'scrypt
-
+  return 'scrypt:' + salt + ':' + crypto.scryptSync(String(password), salt, 64).toString('hex');
+};
+const passwordMatches = (password, encoded) => {
+  if (typeof encoded !== 'string') return false;
+  const parts = encoded.split(':');
+  if (parts.length !== 3 || parts[0] !== 'scrypt') return false;
+  try {
+    const expected = Buffer.from(parts[2], 'hex');
+    const actual = crypto.scryptSync(String(password), parts[1], 64);
+    return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
+  } catch (e) { return false; }
+};
+const normalizeEmail = (v) => String(v || '').trim().toLowerCase();
+const validEmail = (v) => v.length <= 254 && /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(v);
+const normalizePhone = (v) => '+' + String(v || '').replace(/\\D/g, '');
+const validPhone = (v) => /^\\+[1-9]\\d{7,14}$/.test(v);
+async function deliverAuthCode(channel, to, code, purpose) {
+  const url = process.env.AUTH_DELIVERY_URL, token = process.env.AUTH_DELIVERY_TOKEN;
+  if (!url || !token) return false;
+  const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+    body: JSON.stringify({ channel, to, code, purpose, subject: 'Reino dos Guardiões - código de segurança',
+      message: 'Seu código do Reino dos Guardiões é ' + code + '. Ele expira em 10 minutos. Se você não solicitou, ignore esta mensagem.' }),
+    signal: AbortSignal.timeout(8000) });
+  return response.ok;
+}
+async function issueAuthChallenge(kind, target, player) {
+  if (!process.env.AUTH_DELIVERY_URL || !process.env.AUTH_DELIVERY_TOKEN) return { error: 'Envio de e-mail/SMS ainda não configurado no servidor.' };
+  const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+  const id = crypto.randomUUID();
+  const channel = kind === 'phone_link' || (kind === 'password_recovery' && target.startsWith('+')) ? 'sms' : 'email';
+  const sent = await deliverAuthCode(channel, target, code, kind);
+  if (!sent) return { error: 'Não foi possível enviar o código. Tente novamente mais tarde.' };
+  await store.createChallenge({ id, kind, target, player, secretHash: sha(code), expires: Date.now() + 10 * 60 * 1000 });
+  return { ok: true, challengeId: id, channel };
+}
+async function verifyAuthChallenge(id, code, kind) {
+  const row = await store.getChallenge(String(id || ''));
+  if (!row || row.kind !== kind || Number(row.expires) < Date.now() || Number(row.attempts) >= 5) {
+    if (row) await store.deleteChallenge(row.id);
+    return null;
+  }
+  const a = Buffer.from(row.secret_hash, 'hex'), b = Buffer.from(sha(String(code || '').trim()), 'hex');
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    const attempts = Number(row.attempts) + 1;
+    if (attempts >= 5) await store.deleteChallenge(row.id); else await store.updateChallengeAttempts(row.id, attempts);
+    return null;
+  }
+  return row;
+}
 // ---------- App ----------
 const app = express();
 app.set('trust proxy', 1);
