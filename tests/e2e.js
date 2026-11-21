@@ -49,13 +49,13 @@ const srv = app.listen(0, async () => {
   ok((await call('/api/level/start',{level:7,bonus:true})).error, 'fase secreta trancada antes de achar');
   st = await call('/api/level/start',{level:7});
   db.prepare('UPDATE runs SET started = started - 3600000 WHERE id=?').run(st.runId);
-  const rr = play(7, st.cfg.perm, st.cfg.unlocked, {secret:true, treasure:true, trap:true});
+  const rr = play(7, st.cfg.perm, st.cfg.unlocked, {secret:true, treasure:true, trap:true, loadout: st.cfg.loadout});
   f = await call('/api/level/finish',{runId:st.runId, actions:rr.actions});
   ok(f.ok && f.secret === true, 'lugar misterioso achado -> fase secreta liberada');
   st = await call('/api/level/start',{level:7,bonus:true});
   ok(st.ok && st.cfg.bonus, 'entrou na fase secreta (sem gastar energia)');
   db.prepare('UPDATE runs SET started = started - 3600000 WHERE id=?').run(st.runId);
-  const rb = play(7, st.cfg.perm, st.cfg.unlocked, {bonus:true});
+  const rb = play(7, st.cfg.perm, st.cfg.unlocked, {bonus:true, loadout: st.cfg.loadout});
   f = await call('/api/level/finish',{runId:st.runId, actions:rb.actions});
   ok(f.ok && f.bonus && f.coins > 0 && f.gems > 0, 'recompensa da fase secreta: +'+f.coins+' moedas, +'+f.gems+' gemas ('+f.kills+'/'+f.total+' ladrões)');
   ok((await call('/api/level/start',{level:7,bonus:true})).error, 'fase secreta só 1 vez');
