@@ -185,6 +185,13 @@ app.get('/api/account', auth, wrap(async (req, res) => {
 // =================== JOGO ===================
 app.get('/api/me', auth, wrap(async (req, res) => send(res, Object.assign(await welcome(req.pid), { playerId: req.pid }))));
 
+app.get('/api/leaderboard', wrap(async (req, res) => {
+  const rows = await store.listPlayers('', 1000);
+  const ranked = rows.filter(x => !x.banned).sort((a,b) => (b.maxLevel|0)-(a.maxLevel|0) || (a.created|0)-(b.created|0)).slice(0,100);
+  res.json({ ok: true, players: ranked.map((p,i) => ({ rank:i+1, name:p.name || 'Guardião', level:p.maxLevel|0 })) });
+}));
+
+
 app.post('/api/level/start', auth, wrap(async (req, res) => {
   let cfg;
   if (LIVE.maint) { const row = await store.getPlayer(req.pid); if (!isAdmin(req.pid, row.data)) return res.status(503).json({ error: '🛠️ Jogo em manutenção. Volte em alguns minutos!' }); }
