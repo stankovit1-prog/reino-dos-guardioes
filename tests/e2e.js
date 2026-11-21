@@ -12,14 +12,14 @@ const srv = app.listen(0, async () => {
   ok((await call('/api/level/start',{level:5})).error, 'não pode pular fase');
   // jogo legítimo
   let st = await call('/api/level/start',{level:1});
-  const r = play(1);
+  const r = play(1, st.cfg.perm, st.cfg.unlocked, { loadout: st.cfg.loadout });
   db.prepare('UPDATE runs SET started = started - 600000 WHERE id=?').run(st.runId); // simula 10 min jogados
   let f = await call('/api/level/finish',{runId:st.runId, actions:r.actions});
   ok(f.ok && f.status==='won' && f.coins>0 && f.player.maxLevel===1, 'vitória validada pelo servidor: +'+f.coins+' moedas, '+f.stars+'★');
   ok((await call('/api/level/finish',{runId:st.runId, actions:r.actions})).error, 'não dá pra enviar a mesma vitória 2x');
   // trapaça: speed hack
   st = await call('/api/level/start',{level:2});
-  f = await call('/api/level/finish',{runId:st.runId, actions:play(2).actions});
+  f = await call('/api/level/finish',{runId:st.runId, actions:play(2, st.cfg.perm, st.cfg.unlocked, { loadout: st.cfg.loadout }).actions});
   ok(f.error && /rápida/.test(f.error), 'speed-hack bloqueado: '+f.error);
   // trapaça: ouro infinito (ações impossíveis)
   st = await call('/api/level/start',{level:2});
@@ -75,7 +75,7 @@ const srv = app.listen(0, async () => {
   db.prepare('UPDATE players SET data=? WHERE id=?').run(JSON.stringify(pr), pid);
   st = await call('/api/level/start',{level:25});
   db.prepare('UPDATE runs SET started = started - 7200000 WHERE id=?').run(st.runId);
-  const rl = play(25, st.cfg.perm, st.cfg.unlocked, {relic:true});
+  const rl = play(25, st.cfg.perm, st.cfg.unlocked, {relic:true, loadout: st.cfg.loadout});
   f = await call('/api/level/finish',{runId:st.runId, actions:rl.actions});
   ok(f.ok && (f.status !== 'won' || (f.relicWeapon && f.player.owned.includes(f.relicWeapon.k))), 'relíquia achada: ' + (f.relicWeapon ? 'ganhou a arma secreta ' + f.relicWeapon.k : 'robô perdeu a fase (' + f.status + ')'));
   // baú com moedas
