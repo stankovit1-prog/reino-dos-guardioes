@@ -84,7 +84,7 @@ const srv = app.listen(0, async () => {
   ok(ch.ok && ch.player.coins < 5000 + 400, 'baú de prata comprado com 500 moedas (veio: ' + ch.gold + ' moedas' + (ch.gems ? ', ' + ch.gems + ' gemas' : '') + (ch.energy ? ', ' + ch.energy + ' energia' : '') + ')');
   ok((await call('/api/chest/open',{type:'divino', pay:'coins'})).error, 'baú dos deuses não sai com moedas');
   let of = await call('/api/offer/buy',{i:0});
-  ok(of.ok && of.cards[0].n === 12 && of.player.coins === undefined || of.cards[0].n === 12, 'cartas do dia: comprou ' + of.cards[0].n + ' cartas por 180 moedas');
+  ok(of.ok && of.cards[0].n === 12, 'cartas do dia: comprou ' + of.cards[0].n + ' cartas por 180 moedas');
   ok((await call('/api/offer/buy',{i:0})).error, 'cada oferta só 1 vez por dia');
   // outra conta usando token alheio
   tok = (await call('/api/auth/guest',{deviceId:'b'.repeat(40)})).token;
