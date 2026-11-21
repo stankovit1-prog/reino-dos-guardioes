@@ -15,16 +15,16 @@
   function newPlayer(now) {
     return { coins: 200, gems: 20, energy: E.ENERGY_MAX, energyAt: now, maxLevel: 0, stars: {},
       perm: {}, unlocked: [], daily: { last: -1, streak: 0 }, bought: {}, name: 'Guardião',
-      secrets: {}, gemSpots: {}, cards: {}, freeChestAt: now };   // secrets[fase] = 'found' (liberada) | 'done' (já jogada)
+      secrets: {}, gemSpots: {}, cards: {}, loadouts: {}, freeChestAt: now };   // loadouts[fase] = até 6 armas escolhidas
   }
 
   // SAVE À PROVA DE ATUALIZAÇÃO: quando o jogo ganha campos novos (mapas, itens...),
   // contas antigas recebem só o que falta. Nada que o jogador já tem é apagado ou zerado.
-  const SAVE_VERSION = 2;
+  const SAVE_VERSION = 3;
   function migrate(p, now) {
     const base = newPlayer(now || Date.now());
     for (const k in base) if (p[k] === undefined || p[k] === null) p[k] = base[k];
-    for (const k of ['stars', 'perm', 'bought', 'secrets', 'gemSpots', 'cards']) if (typeof p[k] !== 'object') p[k] = {};
+    for (const k of ['stars', 'perm', 'bought', 'secrets', 'gemSpots', 'cards', 'loadouts']) if (typeof p[k] !== 'object') p[k] = {};
     if (!Array.isArray(p.unlocked)) p.unlocked = [];
     if (!p.daily || typeof p.daily !== 'object') p.daily = { last: -1, streak: 0 };
     p.v = SAVE_VERSION;
@@ -61,20 +61,42 @@
     return unlocked;
   }
 
-  function startLevel(p, level, now, bonus) {
+  // Seleção salva por fase: no máximo seis armas desbloqueadas e pertencentes à conta.
+  function chooseLoadout(p, level, requested) {
+    const available = unlockedFor(p);
+    const key = String(level);
+    let chosen;
+    if (Array.isArray(requested)) chosen = requested;
+    else if (Array.isArray(p.loadouts[key]) && p.loadouts[key].length) chosen = p.loadouts[key];
+    else chosen = available.slice(0, 6);
+
+    const clean = [...new Set(chosen.map(k => String(k)))];
+    if (chosen.length < 1 || chosen.length > 6 || clean.length !== chosen.length || clean.some(k => !available.includes(k))) {
+      return { error: 'Escolha de 1 a 6 armas que estejam desbloqueadas na sua conta.' };
+    }
+    p.loadouts[key] = clean;
+    return { loadout: clean };
+  }
+
+  function startLevel(p, level, now, bonus, requestedLoadout) {
     level = level | 0;
     p.secrets = p.secrets || {}; p.gemSpots = p.gemSpots || {};
+    p.loadouts = p.loadouts || {};
     if (bonus) {                                           // FASE SECRETA: grátis, 1 tentativa
       if (p.secrets[level] !== 'found') return { error: 'Fase secreta não encontrada' };
+      const choice = chooseLoadout(p, level, requestedLoadout);
+      if (choice.error) return choice;
       p.secrets[level] = 'done';
-      return { ok: true, cfg: { level, bonus: true, perm: Object.assign({}, p.perm), unlocked: unlockedFor(p) } };
+      return { ok: true, cfg: { level, bonus: true, perm: Object.assign({}, p.perm), unlocked: unlockedFor(p), loadout: choice.loadout } };
     }
     if (level < 1 || level > p.maxLevel + 1) return { error: 'Fase bloqueada' };
+    const choice = chooseLoadout(p, level, requestedLoadout);
+    if (choice.error) return choice;
     refreshEnergy(p, now);
     if (p.energy < 1) return { error: 'Sem energia' };
     if (p.energy >= E.ENERGY_MAX) p.energyAt = now;
     p.energy -= 1;
-    return { ok: true, cfg: { level, perm: Object.assign({}, p.perm), unlocked: unlockedFor(p) } };
+    return { ok: true, cfg: { level, perm: Object.assign({}, p.perm), unlocked: unlockedFor(p), loadout: choice.loadout } };
   }
 
   // run = {cfg, startedAt}; actions vindas do app
