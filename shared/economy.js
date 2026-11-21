@@ -61,7 +61,7 @@
     return unlocked;
   }
 
-  // Seleção salva por fase: no máximo seis armas desbloqueadas e pertencentes à conta.
+  // Seleção salva por fase: no máximo dez armas desbloqueadas e pertencentes à conta.
   function chooseLoadout(p, level, requested) {
     const available = unlockedFor(p);
     const key = String(level);

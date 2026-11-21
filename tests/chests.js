@@ -7,7 +7,7 @@ for (const [type, count] of Object.entries(expected)) {
   let seed = 1; const roll = Eco.rollChest(p, type, () => ((seed++ * 7919) % 997) / 997);
   ok(roll.stacks.reduce((sum, entry) => sum + entry[1], 0) === count, type + ' entrega ' + count + ' cartas');
   const bonusP = Eco.newPlayer(Date.now()); bonusP.maxLevel = 200;
-  const bonus = Eco.giveChest(bonusP, type, () => 0.001);
+  const bonus = Eco.giveChest(bonusP, type, () => 0.1);
   ok(bonus.gold > 0 && bonus.gems > 0 && bonus.energy > 0 && bonus.cards.length > 0, type + ' pode combinar ouro, gemas, energia e cartas');
   const plainP = Eco.newPlayer(Date.now()); plainP.maxLevel = 200;
   const plain = Eco.giveChest(plainP, type, () => 0.9999);
