@@ -177,6 +177,28 @@ o jogador entra na **mesma conta** (Google ou código de recuperação) e não p
 4. Copie o **ID do cliente** (termina com `.apps.googleusercontent.com`).
    *(Pode fazer este passo depois do 5, quando já souber o endereço.)*
 
+### Cadastro por e-mail e recuperação por e-mail/SMS
+O servidor aceita cadastro por e-mail com confirmação de código, login por e-mail/senha e redefinição de senha por e-mail ou SMS. O telefone precisa ser vinculado e confirmado na conta antes de poder ser usado para recuperar acesso.
+
+Para ativar o envio, configure no Render:
+- `AUTH_DELIVERY_URL`: URL HTTPS do seu serviço de envio (webhook).
+- `AUTH_DELIVERY_TOKEN`: token secreto compartilhado com esse serviço.
+
+O jogo envia um POST JSON para essa URL com:
+```json
+{
+  "channel": "email",
+  "to": "jogador@exemplo.com",
+  "code": "123456",
+  "purpose": "email_register",
+  "subject": "Reino dos Guardiões - código de segurança",
+  "message": "Seu código..."
+}
+```
+Para SMS, `channel` será `sms` e `to` será o telefone em formato internacional (ex.: `+5511999999999`). O serviço deve validar o cabeçalho `Authorization: Bearer SEU_TOKEN` e responder HTTP 2xx somente quando aceitar o envio. Não coloque credenciais do provedor no código-fonte. Sem essas duas variáveis, os fluxos informam que o envio ainda não está configurado e não fingem enviar códigos.
+
+Os códigos expiram em 10 minutos e têm limite de cinco tentativas. Senhas são armazenadas com hash scrypt e nunca são retornadas nas APIs públicas.
+
 ### Passo 5 — Servidor grátis (Render)
 1. Crie conta em render.com (entre com o GitHub) → **New → Blueprint** → escolha o repositório.
    O arquivo `render.yaml` já configura tudo.
