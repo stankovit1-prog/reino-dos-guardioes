@@ -136,6 +136,17 @@
     const s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.async = true; s.onload = start; document.head.appendChild(s);
   }
 
+
+  // Feedback visual imediato nos ícones e links, sem bloquear a jogabilidade.
+  document.addEventListener('click', ev => {
+    const link = ev.target.closest('a[href]');
+    if (link && link.target !== '_blank' && link.getAttribute('href') !== '#') $('loading').classList.remove('hidden');
+    const button = ev.target.closest('button');
+    if (button && !button.disabled) {
+      button.classList.add('tap-busy');
+      setTimeout(() => button.classList.remove('tap-busy'), 650);
+    }
+  }, true);
   $('acc-btn').onclick = () => accountModal();
   $('profile-account').onclick = () => accountModal();
 
