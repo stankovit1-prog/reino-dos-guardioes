@@ -273,20 +273,20 @@
   async function googleButton(el) {
     const gcid = (window.GAME_CONFIG || {}).GOOGLE_CLIENT_ID;
     const done = async (idToken) => { const o = await act(API.google(idToken)); if (o.token) { liveInfo(o); closeModal(); toast(o.linked ? 'Conta Google conectada! Seu progresso está salvo ☁️' : 'Bem-vindo de volta! Conta carregada ☁️'); go('home'); } };
-    const cap = window.Capacitor;
-    if (cap && cap.isNativePlatform && cap.isNativePlatform()) {
-      const SL = cap.Plugins && cap.Plugins.SocialLogin;
-      if (!SL || !gcid) return;
-      el.innerHTML = '<button class="btn" style="background:#fff;color:#333;box-shadow:0 3px 0 #999;width:100%">🇬 Entrar com Google</button>';
-      el.firstChild.onclick = async () => { try { await SL.initialize({ google: { webClientId: gcid } }); const r = await SL.login({ provider: 'google', options: {} }); const t = r && r.result && (r.result.idToken || (r.result.responseType === 'online' && r.result.idToken)); if (t) done(t); else toast('Não foi possível entrar com Google'); } catch (e) { toast('Login cancelado'); } };
-      return;
-    }
-    if (API.demo) { el.innerHTML = '<button class="btn" style="background:#fff;color:#333;box-shadow:0 3px 0 #999;width:100%">🇬 Entrar com Google</button>'; el.firstChild.onclick = () => toast('No jogo online, aqui entra com sua conta Google'); return; }
     if (!gcid) {
       el.innerHTML = '<button type="button" class="btn google-login-needed" style="width:100%;background:#fff;color:#333;box-shadow:0 3px 0 #aaa">🌐 Entrar com Google</button><p class="tiny google-login-note">O botão está pronto, mas falta cadastrar o ID OAuth do jogo no servidor para abrir a escolha da sua conta Gmail.</p>';
       el.querySelector('button').onclick = () => toast('Falta configurar o ID OAuth do Google no servidor. O progresso atual não será perdido.');
       return;
     }
+    const cap = window.Capacitor;
+    if (cap && cap.isNativePlatform && cap.isNativePlatform()) {
+      const SL = cap.Plugins && cap.Plugins.SocialLogin;
+      if (!SL) { toast('O login Google do aplicativo ainda não está instalado.'); return; }
+      el.innerHTML = '<button class="btn" style="background:#fff;color:#333;box-shadow:0 3px 0 #999;width:100%">🇬 Entrar com Google</button>';
+      el.firstChild.onclick = async () => { try { await SL.initialize({ google: { webClientId: gcid } }); const r = await SL.login({ provider: 'google', options: {} }); const t = r && r.result && (r.result.idToken || (r.result.responseType === 'online' && r.result.idToken)); if (t) done(t); else toast('Não foi possível entrar com Google'); } catch (e) { toast('Login cancelado'); } };
+      return;
+    }
+    if (API.demo) { el.innerHTML = '<button class="btn" style="background:#fff;color:#333;box-shadow:0 3px 0 #999;width:100%">🇬 Entrar com Google</button>'; el.firstChild.onclick = () => toast('No jogo online, aqui entra com sua conta Google'); return; }
     const start = () => {
       try {
         google.accounts.id.initialize({ client_id: gcid, callback: (r) => done(r.credential), auto_select: false });
