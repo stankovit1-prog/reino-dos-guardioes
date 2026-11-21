@@ -78,7 +78,7 @@
     return { loadout: clean };
   }
 
-  function startLevel(p, level, now, bonus, requestedLoadout) {
+  function startLevel(p, level, now, bonus, requestedLoadout, options) {
     level = level | 0;
     p.secrets = p.secrets || {}; p.gemSpots = p.gemSpots || {};
     p.loadouts = p.loadouts || {};
