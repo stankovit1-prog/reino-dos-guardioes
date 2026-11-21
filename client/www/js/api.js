@@ -49,6 +49,7 @@
       verifyPurchase: (productId, purchaseToken) => call('/api/iap/verify', { productId, purchaseToken }),
       // ----- conta -----
       account: () => call('/api/account'),
+      leaderboard: () => call('/api/leaderboard'),
       newCode: () => call('/api/account/code', {}),
       async recover(code) { const o = await call('/api/auth/recover', { code, deviceId: deviceId() }, true); if (o.token) { token = o.token; LS.set('rg_token', token); API.playerId = o.playerId; LS.set('rg_pid', o.playerId); } return o; },
       async google(idToken) { const o = await call('/api/auth/google', { idToken, deviceId: deviceId() }, true); if (o.token) { token = o.token; LS.set('rg_token', token); API.playerId = o.playerId; LS.set('rg_pid', o.playerId); } return o; },
@@ -78,6 +79,7 @@
       offer: (i) => delay(wrap(p => Eco.buyOffer(p, i, Date.now()))),
       verifyPurchase: (productId) => delay(wrap(p => Eco.grantIap(p, productId))),
       account: () => delay({ ok: true, google: null, hasCode: false, purchases: [] }),
+      leaderboard: () => delay({ ok: true, players: [] }),
       newCode: () => delay({ ok: true, code: 'RG-DEMO-0000-0000' }),
       recover: () => delay({ error: 'Na demonstração a conta fica só neste aparelho. No jogo online o código funciona.' }),
       google: () => delay({ error: 'Login com Google funciona no jogo online.' }),
