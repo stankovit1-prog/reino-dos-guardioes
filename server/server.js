@@ -409,7 +409,7 @@ app.get('/api/multi/state', auth, wrap(async (req, res) => {
   const code = String(req.query.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   const room = multiRooms.get(code);
   if (!room || !multiMember(room, req.pid)) return res.status(404).json({ error: 'Você não está nessa sala.' });
-  room.updatedAt = Date.now();
+  if (room.status === 'waiting' || room.status === 'playing') room.updatedAt = Date.now();
   const out = multiPublic(room, req.pid);
   out.player = await multiPlayerView(req.pid);
   res.json(out);
@@ -505,8 +505,20 @@ app.post('/api/multi/sync', auth, wrap(async (req, res) => {
   if (Buffer.byteLength(JSON.stringify(snapshot), 'utf8') > 160000) {
     return res.status(413).json({ error: 'Estado da partida muito grande.' });
   }
+  const delta = Array.isArray(req.body.actions) ? req.body.actions : [];
+  const actionStart = Number(req.body.actionStart);
+  if (!Number.isInteger(actionStart) || actionStart < 0 || delta.length > 5000) {
+    return res.status(400).json({ error: 'Sequência de comandos inválida.' });
+  }
+  if (actionStart > room.actions.length) return res.status(409).json({ error: 'A sincronização perdeu ações anteriores.' });
+  if (actionStart < room.actions.length) {
+    const stored = room.actions.slice(actionStart, actionStart + delta.length);
+    if (JSON.stringify(stored) !== JSON.stringify(delta)) return res.status(409).json({ error: 'A sincronização repetiu comandos diferentes.' });
+  } else {
+    if (room.actions.length + delta.length > 5000) return res.status(413).json({ error: 'Limite de comandos da partida atingido.' });
+    room.actions.push(...delta);
+  }
   room.snapshot = snapshot;
-  if (Array.isArray(req.body.actions) && req.body.actions.length <= 5000) room.actions = req.body.actions;
   const cursor = Math.max(0, Number(req.body.cursor) | 0);
   room.queue = room.queue.filter(item => item.seq > cursor);
   room.updatedAt = Date.now();
@@ -519,7 +531,7 @@ app.post('/api/multi/finish', auth, wrap(async (req, res) => {
   if (!room || room.hostPid !== req.pid || room.status !== 'playing') {
     return res.status(400).json({ error: 'Batalha não encontrada ou já encerrada.' });
   }
-  const actions = req.body.actions;
+  const actions = room.actions;
   if (!Array.isArray(actions) || actions.length > 5000) return res.status(400).json({ error: 'Ações da partida inválidas.' });
   room.status = 'finishing';
   room.updatedAt = Date.now();

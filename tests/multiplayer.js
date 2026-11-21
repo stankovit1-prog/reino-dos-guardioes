@@ -44,16 +44,14 @@ const srv = app.listen(0, async () => {
       code: created.room.code, action: { a: 'wave' }
     });
     ok(queued.ok && queued.queued, 'aliado envia comando ao tabuleiro compartilhado');
-    const sync = await call(host.token, '/api/multi/sync', {
-      code: created.room.code, cursor: 0, snapshot: { tick: 0, status: 'playing' }, actions: []
-    });
-    ok(sync.ok && sync.requests.length === 1 && sync.requests[0].action.a === 'wave', 'líder recebe comando do aliado');
     const result = play(1, started.cfg.perm, started.cfg.unlocked, { loadout: started.cfg.loadout });
+    const sync = await call(host.token, '/api/multi/sync', {
+      code: created.room.code, cursor: 0, snapshot: { tick: 0, status: 'playing' }, actionStart: 0, actions: result.actions
+    });
+    ok(sync.ok && sync.requests.length === 1 && sync.requests[0].action.a === 'wave', 'líder recebe comando e envia o histórico por partes');
     db.prepare('UPDATE runs SET started = started - 600000 WHERE player IN (?, ?)')
       .run(host.playerId, guest.playerId);
-    const finished = await call(host.token, '/api/multi/finish', {
-      code: created.room.code, actions: result.actions
-    });
+    const finished = await call(host.token, '/api/multi/finish', { code: created.room.code });
     ok(finished.ok && Array.isArray(finished.team) && finished.team.length === 2, 'vitória é validada para os dois participantes');
     const hostProfile = await call(host.token, '/api/me');
     const guestProfile = await call(guest.token, '/api/me');

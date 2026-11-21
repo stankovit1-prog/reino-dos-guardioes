@@ -531,7 +531,9 @@
       multiSyncBusy = true;
       try {
         if (G.multiRole === 'host') {
-          const out = await API.multiSync(G.multiRoom, G.multiCursor || 0, G.s, G.actions);
+          const actionStart = G.multiActionsSent || 0;
+          const actionDelta = G.actions.slice(actionStart);
+          const out = await API.multiSync(G.multiRoom, G.multiCursor || 0, G.s, actionStart, actionDelta);
           if (out.error) {
             toast(out.error);
             return;
@@ -541,6 +543,7 @@
             if (request && request.action && doAction(Object.assign({}, request.action))) changed = true;
           }
           G.multiCursor = Math.max(G.multiCursor || 0, Number(out.cursor) || 0);
+          G.multiActionsSent = actionStart + actionDelta.length;
           if (changed) renderPanel();
         } else {
           const out = await API.multiState(G.multiRoom);
@@ -576,7 +579,7 @@
       } finally {
         multiSyncBusy = false;
       }
-    }, 800);
+    }, 1700);
   }
 
 
@@ -910,7 +913,8 @@
     }
     const s = multiInfo && multiInfo.snapshot ? multiInfo.snapshot : Sim.createGame(o.cfg);
     G = { s, runId: o.runId, actions: multiInfo && multiInfo.actions ? multiInfo.actions.slice() : [], speed: 1, sel: null, selCell: null, selSlot: null, selRock: null, prev: {}, proj: [], parts: [], ang: {}, recoil: {}, mon: {}, thit: {}, stunKind: {}, mshots: [], seen: {}, trans: null, acc: 0, last: performance.now(), sending: false,
-      multiRoom: multiInfo && multiInfo.room || null, multiRole: multiInfo && multiInfo.role || null, multiCursor: 0, multiFinished: false };
+      multiRoom: multiInfo && multiInfo.room || null, multiRole: multiInfo && multiInfo.role || null, multiCursor: 0,
+      multiActionsSent: multiInfo && multiInfo.actions ? multiInfo.actions.length : 0, multiFinished: false };
     document.body.classList.add('ingame');
     document.querySelectorAll('.screen').forEach(x => x.classList.remove('active'));
     $('s-game').classList.add('active');
@@ -1728,13 +1732,16 @@
     let out;
     if (G.multiRole === 'host') {
       stopMultiSync();
-      const finalSync = await API.multiSync(G.multiRoom, G.multiCursor || 0, G.s, G.actions);
+      const actionStart = G.multiActionsSent || 0;
+      const actionDelta = G.actions.slice(actionStart);
+      const finalSync = await API.multiSync(G.multiRoom, G.multiCursor || 0, G.s, actionStart, actionDelta);
       if (!finalSync.error) {
         for (const request of finalSync.requests || []) {
           if (request && request.action) doAction(Object.assign({}, request.action));
         }
+        G.multiActionsSent = actionStart + actionDelta.length;
       }
-      out = await act(API.multiFinish(G.multiRoom, G.actions));
+      out = await act(API.multiFinish(G.multiRoom));
     } else out = await act(API.finish(G.runId, G.actions));
     const won = s.status === 'won';
     if (out.error) {
