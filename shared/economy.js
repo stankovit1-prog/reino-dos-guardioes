@@ -89,7 +89,7 @@
       p.secrets[level] = 'done';
       return { ok: true, cfg: { level, bonus: true, perm: Object.assign({}, p.perm), unlocked: unlockedFor(p), loadout: choice.loadout } };
     }
-    if (level < 1 || level > p.maxLevel + 1) return { error: 'Fase bloqueada' };
+    if (level < 1 || (level > p.maxLevel + 1 && !(options && options.allowLocked))) return { error: 'Fase bloqueada' };
     const choice = chooseLoadout(p, level, requestedLoadout);
     if (choice.error) return choice;
     refreshEnergy(p, now);
@@ -130,16 +130,19 @@
     const res = { status: r.status, stars: r.stars, coins: 0, gems: 0 };
     if (r.status === 'won') {
       const prev = p.stars[level] | 0;
-      const first = level > p.maxLevel;
+      const first = level > p.maxLevel && !prev;
       const rw = E.reward(level, r.stars, first);
       // repetir fase dá metade das moedas (evita farm infinito)
       res.coins = first || r.stars > prev ? rw.coins : Math.floor(rw.coins / 2);
       res.gems = r.stars > prev && r.stars === 3 ? Math.max(rw.gems, 2) : 0;
       p.coins += res.coins; p.gems += res.gems;
+      // Registra vitórias fora de ordem (por exemplo, fase avançada em cooperativo),
+      // mas só libera a campanha quando todas as fases anteriores estiverem concluídas.
       if (r.stars > prev) p.stars[level] = r.stars;
+      while (p.stars[p.maxLevel + 1]) p.maxLevel++;
       const idx = (level - 1) % Sim.LEVELS_PER_WORLD + 1;
       const chest = first ? (idx === Sim.LEVELS_PER_WORLD ? 'ouro' : idx % 10 === 0 ? 'prata' : 'madeira') : (rand && rand() < 0.3 ? 'madeira' : null);
-      if (first) p.maxLevel = level;
+      
       res.chests = [];
       if (chest && rand) res.chests.push(giveChest(p, chest, rand));
       const ms = first && E.milestone(level);
