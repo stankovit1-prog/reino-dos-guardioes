@@ -35,9 +35,8 @@ const store = createStore();
 const ready = store.init().then(loadLive);
 
 // ---------- USUÁRIO MESTRE ----------
-// Só quem estiver nestas listas (configuradas no Render, nunca no código) vê o painel.
-//   ADMIN_EMAILS = seu e-mail do Google (vale quando você entra com Google no jogo)
-//   ADMIN_IDS    = ID da sua conta (aparece em 👤 Conta) — funciona mesmo sem login Google
+// Somente contas autenticadas com um Gmail listado em ADMIN_EMAILS recebem acesso ao painel.
+// O acesso por ADMIN_IDS foi desativado: não basta conhecer ou copiar um ID de jogador.
 const envList = (k) => (process.env[k] || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 // O painel do mestre só é liberado após autenticação com um dos e-mails Google autorizados.
 const isAdmin = (_pid, data) => !!data && !!data.email && envList('ADMIN_EMAILS').includes(String(data.email).trim().toLowerCase());
