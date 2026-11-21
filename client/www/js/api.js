@@ -40,7 +40,7 @@
     return {
       demo: false,
       async init() { if (!token) return login(); API.playerId = LS.get('rg_pid'); const me = await call('/api/me'); return me.error ? login() : me; },
-      start: (level, bonus) => call('/api/level/start', { level, bonus: !!bonus }),
+      start: (level, bonus, loadout) => call('/api/level/start', { level, bonus: !!bonus, loadout: Array.isArray(loadout) ? loadout : undefined }),
       finish: (runId, actions) => call('/api/level/finish', { runId, actions }),
       upgrade: (tower) => call('/api/upgrade', { tower }),
       buy: (item) => call('/api/shop/buy', { item }),
@@ -78,7 +78,7 @@
     return {
       demo: true,
       init: () => delay(wrap(() => ({ ok: true }))),
-      start: (level, bonus) => delay(wrap(p => { const r = Eco.startLevel(p, level, Date.now(), bonus); if (r.error) return r; run = { cfg: r.cfg, startedAt: Date.now() }; return { ok: true, runId: 'demo', cfg: r.cfg }; })),
+      start: (level, bonus, loadout) => delay(wrap(p => { const r = Eco.startLevel(p, level, Date.now(), bonus, loadout); if (r.error) return r; run = { cfg: r.cfg, startedAt: Date.now() }; return { ok: true, runId: 'demo', cfg: r.cfg }; })),
       finish: (runId, actions) => delay(wrap(p => { if (!run) return { error: 'Partida não encontrada' }; const r = Eco.finishLevel(p, run, actions, Date.now(), Math.random); run = null; return r; })),
       upgrade: (t) => delay(wrap(p => Eco.upgrade(p, t))),
       buy: (i) => delay(wrap(p => Eco.buyShop(p, i, Date.now()))),

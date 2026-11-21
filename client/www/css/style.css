@@ -239,3 +239,23 @@ button.tap-busy::after{content:"";display:inline-block;width:10px;height:10px;ma
   .menu-player-strip,.main-menu-actions,.menu-shortcuts{max-width:520px;margin-left:auto;margin-right:auto}
   #s-community .community-panel{max-width:620px;margin:0 auto}
 }
+
+
+/* Seleção das seis armas que o guardião levará para cada fase */
+.box{max-height:calc(100dvh - 28px);overflow-y:auto;overscroll-behavior:contain}
+.loadout-picker{margin:12px 0 14px;padding:10px;border-radius:13px;text-align:left;background:#100c2c;border:1px solid #6653ad}
+.loadout-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.loadout-heading b{font-size:13px;color:#ffe08a}
+.loadout-heading span{font-size:11px;font-weight:900;color:#fff;background:#6043a0;border-radius:999px;padding:4px 8px;white-space:nowrap}
+.loadout-picker>p{font-size:10px;color:var(--mut);margin:5px 0 9px}
+.loadout-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;max-height:245px;overflow-y:auto;overscroll-behavior:contain;padding:2px}
+.loadout-card{position:relative;min-width:0;min-height:76px;padding:7px 4px 5px;border-radius:10px;border:2px solid #4b426f;background:linear-gradient(150deg,#32275e,#1b1539);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.loadout-card.selected{border-color:var(--loadout-color,#ffd43b);background:linear-gradient(150deg,#493c79,#29204d);box-shadow:0 0 10px color-mix(in srgb,var(--loadout-color,#ffd43b) 30%,transparent)}
+.loadout-check{position:absolute;top:3px;right:4px;width:16px;height:16px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:1000;background:#554a78;color:#ddd}
+.loadout-card.selected .loadout-check{background:var(--loadout-color,#ffd43b);color:#20163e}
+.loadout-icon{font-size:23px;line-height:1.15}
+.loadout-name{font-size:9px;font-weight:900;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.loadout-card small{font-size:8px;color:var(--mut)}
+.google-login-needed{margin:8px 0 2px}
+.google-login-note{color:#ffe08a;text-align:center;margin:4px 0 0}
+@media(max-width:360px){.loadout-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-height:220px}.loadout-card{min-height:68px}}

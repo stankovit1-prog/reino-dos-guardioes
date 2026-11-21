@@ -157,63 +157,63 @@
    */
   const ENEMIES = {
     // 1 — Floresta Encantada
-    slime:    { name: 'Gosminha',        hp: 55,  spd: 6,  gold: 4,  dmg: 1, r: 26, color: '#7ee787', desc: 'Pula devagarinho pelo caminho.' },
-    goblin:   { name: 'Goblin',          hp: 45,  spd: 9,  gold: 5,  dmg: 1, r: 24, color: '#69db7c', desc: 'Pequeno e apressado.' },
-    lobo:     { name: 'Lobo',            hp: 42,  spd: 11, gold: 5,  dmg: 1, r: 25, color: '#adb5bd', desc: 'Dá ARRANCADAS de velocidade.', dash: true },
-    morcego:  { name: 'Morcego',         hp: 35,  spd: 9,  gold: 6,  dmg: 1, r: 22, color: '#9775fa', desc: 'VOA! Canhão e Gelo não acertam.', fly: true },
+    slime:    { name: 'Gosminha',        hp: 55,  spd: 6,  gold: 4,  dmg: 1, r: 26, color: '#34d399', desc: 'Pula devagarinho pelo caminho.' },
+    goblin:   { name: 'Goblin',          hp: 45,  spd: 9,  gold: 5,  dmg: 1, r: 24, color: '#e63946', desc: 'Pequeno e apressado.' },
+    lobo:     { name: 'Lobo',            hp: 42,  spd: 11, gold: 5,  dmg: 1, r: 25, color: '#8d99ae', desc: 'Dá ARRANCADAS de velocidade.', dash: true },
+    morcego:  { name: 'Morcego',         hp: 35,  spd: 9,  gold: 6,  dmg: 1, r: 22, color: '#845ec2', desc: 'VOA! Canhão e Gelo não acertam.', fly: true },
     ogro:     { name: 'Rei Ogro',        hp: 1300, spd: 3, gold: 70, dmg: 5, r: 46, color: '#f76707', desc: 'Chefão! INVOCA goblins e ARREMESSA PEDRAS nas torres.', boss: true, summon: { type: 'goblin', n: 2 } },
     // 2 — Deserto Escaldante
-    escorpiao:{ name: 'Escorpião',       hp: 80,  spd: 7,  gold: 7,  dmg: 1, r: 26, color: '#e8590c', desc: 'Carapaça com ESCUDO. Cospe VENENO nas torres.', shield: 45 },
+    escorpiao:{ name: 'Escorpião',       hp: 80,  spd: 7,  gold: 7,  dmg: 1, r: 26, color: '#f97316', desc: 'Carapaça com ESCUDO. Cospe VENENO nas torres.', shield: 45 },
     mumia:    { name: 'Múmia',           hp: 90,  spd: 5,  gold: 8,  dmg: 1, r: 27, color: '#e9dcc0', desc: 'REVIVE uma vez depois de derrotada!', revive: true },
-    besouro:  { name: 'Escaravelho',     hp: 70,  spd: 8,  gold: 7,  dmg: 1, r: 24, color: '#1c7ed6', desc: 'ENTRA NA AREIA e fica intocável por um tempo.', burrow: true },
-    abutre:   { name: 'Abutre',          hp: 60,  spd: 8,  gold: 7,  dmg: 1, r: 26, color: '#862e9c', desc: 'VOA sobre o deserto.', fly: true },
+    besouro:  { name: 'Escaravelho',     hp: 70,  spd: 8,  gold: 7,  dmg: 1, r: 24, color: '#2563eb', desc: 'ENTRA NA AREIA e fica intocável por um tempo.', burrow: true },
+    abutre:   { name: 'Abutre',          hp: 60,  spd: 8,  gold: 7,  dmg: 1, r: 26, color: '#9d4edd', desc: 'VOA sobre o deserto.', fly: true },
     farao:    { name: 'Faraó Esfinge',   hp: 1500, spd: 3, gold: 80, dmg: 5, r: 46, color: '#f2c94c', desc: 'Chefão! Acorda múmias e AMALDIÇOA torres (param de atirar).', boss: true, summon: { type: 'mumia', n: 2 } },
     // 3 — Pântano Sombrio
-    sapo:     { name: 'Sapo Saltador',   hp: 85,  spd: 5,  gold: 8,  dmg: 1, r: 25, color: '#5c940d', desc: 'SALTA lá na frente e cospe VENENO nas torres.', jump: true },
-    mosquito: { name: 'Mosquitão',       hp: 55,  spd: 12, gold: 8,  dmg: 1, r: 20, color: '#495057', desc: 'VOA muito rápido.', fly: true },
-    croco:    { name: 'Crocodilo',       hp: 200, spd: 4,  gold: 14, dmg: 2, r: 34, color: '#2b8a3e', desc: 'Couro grosso: ESCUDO enorme.', shield: 60 },
-    xama:     { name: 'Xamã do Pântano', hp: 110, spd: 5,  gold: 14, dmg: 1, r: 28, color: '#20c997', desc: 'CURA os monstros perto dele.', heal: true },
+    sapo:     { name: 'Sapo Saltador',   hp: 85,  spd: 5,  gold: 8,  dmg: 1, r: 25, color: '#c77dff', desc: 'SALTA lá na frente e cospe VENENO nas torres.', jump: true },
+    mosquito: { name: 'Mosquitão',       hp: 55,  spd: 12, gold: 8,  dmg: 1, r: 20, color: '#264653', desc: 'VOA muito rápido.', fly: true },
+    croco:    { name: 'Crocodilo',       hp: 200, spd: 4,  gold: 14, dmg: 2, r: 34, color: '#2a9d8f', desc: 'Couro grosso: ESCUDO enorme.', shield: 60 },
+    xama:     { name: 'Xamã do Pântano', hp: 110, spd: 5,  gold: 14, dmg: 1, r: 28, color: '#e76f51', desc: 'CURA os monstros perto dele.', heal: true },
     bruxa:    { name: 'Bruxa do Pântano',hp: 1700, spd: 3, gold: 90, dmg: 5, r: 44, color: '#7048e8', desc: 'Chefona! Cura, invoca sapos e AMALDIÇOA torres.', boss: true, heal: true, summon: { type: 'sapo', n: 2 } },
     // 4 — Montanhas Geladas
-    pinguim:  { name: 'Pinguim',         hp: 90,  spd: 10, gold: 8,  dmg: 1, r: 24, color: '#343a40', desc: 'Desliza rápido e é IMUNE AO GELO.', noSlow: true },
-    yeti:     { name: 'Yeti',            hp: 260, spd: 4,  gold: 16, dmg: 2, r: 36, color: '#e7f5ff', desc: 'Gigante com ESCUDO. Joga BOLAS DE NEVE nas torres.', shield: 40 },
-    lobogelo: { name: 'Lobo da Neve',    hp: 100, spd: 11, gold: 10, dmg: 1, r: 26, color: '#a5d8ff', desc: 'ARRANCADAS e imune ao gelo.', dash: true, noSlow: true },
-    espirito: { name: 'Espírito Gélido', hp: 90,  spd: 8,  gold: 10, dmg: 1, r: 24, color: '#74c0fc', desc: 'Fantasma que VOA e CONGELA torres.', fly: true, noSlow: true },
+    pinguim:  { name: 'Pinguim',         hp: 90,  spd: 10, gold: 8,  dmg: 1, r: 24, color: '#2b2d42', desc: 'Desliza rápido e é IMUNE AO GELO.', noSlow: true },
+    yeti:     { name: 'Yeti',            hp: 260, spd: 4,  gold: 16, dmg: 2, r: 36, color: '#e0fbfc', desc: 'Gigante com ESCUDO. Joga BOLAS DE NEVE nas torres.', shield: 40 },
+    lobogelo: { name: 'Lobo da Neve',    hp: 100, spd: 11, gold: 10, dmg: 1, r: 26, color: '#90e0ef', desc: 'ARRANCADAS e imune ao gelo.', dash: true, noSlow: true },
+    espirito: { name: 'Espírito Gélido', hp: 90,  spd: 8,  gold: 10, dmg: 1, r: 24, color: '#5e60ce', desc: 'Fantasma que VOA e CONGELA torres.', fly: true, noSlow: true },
     golem:    { name: 'Golem de Gelo',   hp: 2000, spd: 2, gold: 100, dmg: 6, r: 48, color: '#4dabf7', desc: 'Chefão! Joga blocos de GELO e se parte em 2 Yetis.', boss: true, shield: 30, split: { type: 'yeti', n: 2, pct: 60 } },
     // 5 — Vulcão Flamejante
-    diabrete: { name: 'Diabrete',        hp: 90,  spd: 11, gold: 9,  dmg: 1, r: 22, color: '#fa5252', desc: 'Rápido, resiste a fogo e lança BOLAS DE FOGO nas torres.', resist: { dragao: 50, solar: 50 } },
-    salamandra:{name: 'Salamandra',      hp: 140, spd: 7,  gold: 12, dmg: 1, r: 26, color: '#ff922b', desc: 'Some na LAVA por um tempo.', burrow: true, resist: { dragao: 50, solar: 50 } },
-    magma:    { name: 'Golem de Magma',  hp: 280, spd: 4,  gold: 16, dmg: 2, r: 36, color: '#c92a2a', desc: 'Se DIVIDE em 3 diabretes e joga LAVA nas torres.', split: { type: 'diabrete', n: 3, pct: 50 } },
-    fenix:    { name: 'Fênix',           hp: 110, spd: 9,  gold: 14, dmg: 1, r: 26, color: '#ffa94d', desc: 'VOA e RENASCE das cinzas.', fly: true, revive: true },
+    diabrete: { name: 'Diabrete',        hp: 90,  spd: 11, gold: 9,  dmg: 1, r: 22, color: '#d62828', desc: 'Rápido, resiste a fogo e lança BOLAS DE FOGO nas torres.', resist: { dragao: 50, solar: 50 } },
+    salamandra:{name: 'Salamandra',      hp: 140, spd: 7,  gold: 12, dmg: 1, r: 26, color: '#f77f00', desc: 'Some na LAVA por um tempo.', burrow: true, resist: { dragao: 50, solar: 50 } },
+    magma:    { name: 'Golem de Magma',  hp: 280, spd: 4,  gold: 16, dmg: 2, r: 36, color: '#6a040f', desc: 'Se DIVIDE em 3 diabretes e joga LAVA nas torres.', split: { type: 'diabrete', n: 3, pct: 50 } },
+    fenix:    { name: 'Fênix',           hp: 110, spd: 9,  gold: 14, dmg: 1, r: 26, color: '#ffbe0b', desc: 'VOA e RENASCE das cinzas.', fly: true, revive: true },
     // 6 — Ilha dos Piratas
-    caranguejo:{ name: 'Caranguejo',     hp: 110, spd: 6,  gold: 9,  dmg: 1, r: 25, color: '#f03e3e', desc: 'Casco duro: ESCUDO. Belisca as armas.', shield: 40 },
-    pirata:   { name: 'Pirata Esqueleto',hp: 100, spd: 7,  gold: 10, dmg: 1, r: 26, color: '#e9ecef', desc: 'Atira BALAS DE CANHÃO nas armas.' },
-    gaivota:  { name: 'Gaivota Ladra',   hp: 70,  spd: 11, gold: 9,  dmg: 1, r: 22, color: '#f8f9fa', desc: 'VOA rápido sobre o mar.', fly: true },
-    polvo:    { name: 'Polvo',           hp: 150, spd: 5,  gold: 14, dmg: 2, r: 30, color: '#e64980', desc: 'Joga TINTA e cega as armas (param).' },
+    caranguejo:{ name: 'Caranguejo',     hp: 110, spd: 6,  gold: 9,  dmg: 1, r: 25, color: '#e63946', desc: 'Casco duro: ESCUDO. Belisca as armas.', shield: 40 },
+    pirata:   { name: 'Pirata Esqueleto',hp: 100, spd: 7,  gold: 10, dmg: 1, r: 26, color: '#d9ed92', desc: 'Atira BALAS DE CANHÃO nas armas.' },
+    gaivota:  { name: 'Gaivota Ladra',   hp: 70,  spd: 11, gold: 9,  dmg: 1, r: 22, color: '#edf6f9', desc: 'VOA rápido sobre o mar.', fly: true },
+    polvo:    { name: 'Polvo',           hp: 150, spd: 5,  gold: 14, dmg: 2, r: 30, color: '#9d4edd', desc: 'Joga TINTA e cega as armas (param).' },
     kraken:   { name: 'Kraken',          hp: 2600, spd: 2, gold: 130, dmg: 6, r: 50, color: '#862e9c', desc: 'Chefão do mar! Invoca polvos e esmaga armas.', boss: true, shield: 25, summon: { type: 'polvo', n: 2 } },
     // 7 — Cemitério Assombrado
-    zumbi:    { name: 'Zumbi',           hp: 140, spd: 4,  gold: 10, dmg: 1, r: 26, color: '#8ce99a', desc: 'Lento, mas REVIVE uma vez.', revive: true },
+    zumbi:    { name: 'Zumbi',           hp: 140, spd: 4,  gold: 10, dmg: 1, r: 26, color: '#90be6d', desc: 'Lento, mas REVIVE uma vez.', revive: true },
     esqueleto:{ name: 'Esqueleto',       hp: 100, spd: 9,  gold: 10, dmg: 1, r: 24, color: '#f1f3f5', desc: 'Corre com ARRANCADAS e joga ossos.', dash: true },
-    fantasma: { name: 'Fantasma',        hp: 90,  spd: 8,  gold: 12, dmg: 1, r: 24, color: '#dee2e6', desc: 'Voa e fica INVISÍVEL de vez em quando.', fly: true, burrow: true },
-    vampiro:  { name: 'Morcego Vampiro', hp: 110, spd: 10, gold: 12, dmg: 1, r: 23, color: '#c92a2a', desc: 'VOA e CURA os amigos.', fly: true, heal: true },
+    fantasma: { name: 'Fantasma',        hp: 90,  spd: 8,  gold: 12, dmg: 1, r: 24, color: '#caf0f8', desc: 'Voa e fica INVISÍVEL de vez em quando.', fly: true, burrow: true },
+    vampiro:  { name: 'Morcego Vampiro', hp: 110, spd: 10, gold: 12, dmg: 1, r: 23, color: '#720026', desc: 'VOA e CURA os amigos.', fly: true, heal: true },
     conde:    { name: 'Conde Vampiro',   hp: 2900, spd: 3, gold: 140, dmg: 6, r: 46, color: '#5f3dc4', desc: 'Chefão! Cura, invoca morcegos e amaldiçoa armas.', boss: true, heal: true, summon: { type: 'vampiro', n: 2 } },
     // 8 — Cavernas de Cristal
-    aranha:   { name: 'Aranha de Cristal', hp: 100, spd: 11, gold: 11, dmg: 1, r: 24, color: '#9775fa', desc: 'Rápida. Joga TEIA nas armas (param).' },
-    toupeira: { name: 'Toupeira',        hp: 150, spd: 6,  gold: 12, dmg: 1, r: 25, color: '#a07040', desc: 'CAVA e some debaixo da terra.', burrow: true },
-    morcegocristal: { name: 'Morcego de Cristal', hp: 100, spd: 10, gold: 12, dmg: 1, r: 22, color: '#66d9e8', desc: 'VOA e é imune a gelo.', fly: true, noSlow: true },
-    golemcristal: { name: 'Golem de Cristal', hp: 320, spd: 3, gold: 20, dmg: 2, r: 36, color: '#cc5de8', desc: 'ESCUDO enorme. Vira 2 aranhas.', shield: 50, split: { type: 'aranha', n: 2, pct: 50 } },
+    aranha:   { name: 'Aranha de Cristal', hp: 100, spd: 11, gold: 11, dmg: 1, r: 24, color: '#7b2cbf', desc: 'Rápida. Joga TEIA nas armas (param).' },
+    toupeira: { name: 'Toupeira',        hp: 150, spd: 6,  gold: 12, dmg: 1, r: 25, color: '#bc6c25', desc: 'CAVA e some debaixo da terra.', burrow: true },
+    morcegocristal: { name: 'Morcego de Cristal', hp: 100, spd: 10, gold: 12, dmg: 1, r: 22, color: '#00b4d8', desc: 'VOA e é imune a gelo.', fly: true, noSlow: true },
+    golemcristal: { name: 'Golem de Cristal', hp: 320, spd: 3, gold: 20, dmg: 2, r: 36, color: '#ff70a6', desc: 'ESCUDO enorme. Vira 2 aranhas.', shield: 50, split: { type: 'aranha', n: 2, pct: 50 } },
     rainha:   { name: 'Rainha Aranha',   hp: 3200, spd: 3, gold: 150, dmg: 7, r: 48, color: '#7048e8', desc: 'Chefona! Invoca aranhas e prende armas na teia.', boss: true, shield: 30, summon: { type: 'aranha', n: 3 } },
     // 9 — Reino das Nuvens
-    harpia:   { name: 'Harpia',          hp: 120, spd: 10, gold: 12, dmg: 1, r: 25, color: '#e8590c', desc: 'VOA e dá rasantes nas armas.', fly: true },
-    duende:   { name: 'Duende do Vento', hp: 110, spd: 12, gold: 11, dmg: 1, r: 22, color: '#63e6be', desc: 'ARRANCADAS e imune ao gelo.', dash: true, noSlow: true },
+    harpia:   { name: 'Harpia',          hp: 120, spd: 10, gold: 12, dmg: 1, r: 25, color: '#f4a261', desc: 'VOA e dá rasantes nas armas.', fly: true },
+    duende:   { name: 'Duende do Vento', hp: 110, spd: 12, gold: 11, dmg: 1, r: 22, color: '#2a9d8f', desc: 'ARRANCADAS e imune ao gelo.', dash: true, noSlow: true },
     nuvem:    { name: 'Nuvem Brava',     hp: 160, spd: 5,  gold: 14, dmg: 1, r: 30, color: '#adb5bd', desc: 'VOA e solta RAIOS que paralisam armas.', fly: true },
-    grifo:    { name: 'Grifo',           hp: 260, spd: 7,  gold: 18, dmg: 2, r: 32, color: '#fab005', desc: 'VOA com ESCUDO de penas.', fly: true, shield: 40 },
+    grifo:    { name: 'Grifo',           hp: 260, spd: 7,  gold: 18, dmg: 2, r: 32, color: '#f6bd60', desc: 'VOA com ESCUDO de penas.', fly: true, shield: 40 },
     tempestade: { name: 'Rei Tempestade', hp: 3500, spd: 3, gold: 160, dmg: 7, r: 48, color: '#1c7ed6', desc: 'Chefão! Voa, invoca nuvens e solta trovões.', boss: true, fly: true, summon: { type: 'nuvem', n: 2 } },
     // 10 — Abismo Sombrio
     cavaleiro:{ name: 'Cavaleiro Negro', hp: 300, spd: 4,  gold: 18, dmg: 2, r: 32, color: '#495057', desc: 'Armadura: ESCUDO gigante.', shield: 70 },
-    demonio:  { name: 'Demônio',         hp: 180, spd: 9,  gold: 15, dmg: 1, r: 27, color: '#e03131', desc: 'Resiste a fogo e lança chamas.', resist: { dragao: 50, solar: 50 } },
-    sombra:   { name: 'Sombra',          hp: 140, spd: 11, gold: 14, dmg: 1, r: 24, color: '#343a40', desc: 'Some nas trevas (INVISÍVEL) e dá arrancadas.', burrow: true, dash: true },
-    dragaonegro: { name: 'Dragão Negro', hp: 260, spd: 8,  gold: 20, dmg: 2, r: 32, color: '#212529', desc: 'VOA e cospe fogo negro.', fly: true, revive: true },
+    demonio:  { name: 'Demônio',         hp: 180, spd: 9,  gold: 15, dmg: 1, r: 27, color: '#f72585', desc: 'Resiste a fogo e lança chamas.', resist: { dragao: 50, solar: 50 } },
+    sombra:   { name: 'Sombra',          hp: 140, spd: 11, gold: 14, dmg: 1, r: 24, color: '#212529', desc: 'Some nas trevas (INVISÍVEL) e dá arrancadas.', burrow: true, dash: true },
+    dragaonegro: { name: 'Dragão Negro', hp: 260, spd: 8,  gold: 20, dmg: 2, r: 32, color: '#6a4c93', desc: 'VOA e cospe fogo negro.', fly: true, revive: true },
     trevas:   { name: 'Senhor do Inferno', hp: 4200, spd: 2, gold: 220, dmg: 8, r: 52, color: '#212529', desc: 'Chefão FINAL! Escudo, cura, invoca sombras e amaldiçoa.', boss: true, shield: 40, heal: true, summon: { type: 'sombra', n: 3 } },
     larva:    { name: 'Larva de Lava',   hp: 220, spd: 5,  gold: 16, dmg: 1, r: 28, color: '#fd7e14', desc: 'Rasteja na lava e se DIVIDE em 3 larvinhas.', split: { type: 'larvinha', n: 3, pct: 40 }, resist: { dragao: 60, solar: 60 } },
     larvinha: { name: 'Larvinha',        hp: 80,  spd: 9,  gold: 4,  dmg: 1, r: 18, color: '#ffa94d', desc: 'Pequena e rápida.', resist: { dragao: 60, solar: 60 } },
@@ -439,6 +439,8 @@
       level, bonus, tick: 0, gold: bonus ? 260 + level * 6 : 140 + level * 6, lives: START_LIVES,
       gemRocks: 0, spawned: 0, nextTrapId: 1, nextZoneId: 1,
       perm: Object.assign({}, cfg.perm || {}), unlocked: (cfg.unlocked || []).slice(),
+      // Quando houver loadout, só as armas escolhidas antes da fase podem ser construídas.
+      loadout: Array.isArray(cfg.loadout) ? cfg.loadout.slice(0, 6) : null,
       waves: genWaves(level, bonus), wave: -1, phase: 'build', buildTimer: BUILD_TICKS,
       spawnQ: [], spawnTimer: 0,
       towers: [], nextTowerId: 1, enemies: [], nextEnemyId: 1,
@@ -471,7 +473,8 @@
   function canUse(s, type) {
     const t = TOWERS[type];
     if (!t) return false;
-    if (!t.unlock) return s.unlocked.indexOf(type) >= 0;          // só de baú / loja
+    if (Array.isArray(s.loadout)) return s.loadout.includes(type);
+    if (!t.unlock) return s.unlocked.indexOf(type) >= 0;          // compatibilidade com partidas antigas
     return s.level >= t.unlock || s.unlocked.indexOf(type) >= 0;
   }
 

@@ -35,11 +35,11 @@ const store = createStore();
 const ready = store.init().then(loadLive);
 
 // ---------- USUÁRIO MESTRE ----------
-// Só quem estiver nestas listas (configuradas no Render, nunca no código) vê o painel.
-//   ADMIN_EMAILS = seu e-mail do Google (vale quando você entra com Google no jogo)
-//   ADMIN_IDS    = ID da sua conta (aparece em 👤 Conta) — funciona mesmo sem login Google
+// Somente contas autenticadas com um Gmail listado em ADMIN_EMAILS recebem acesso ao painel.
+// O acesso por ADMIN_IDS foi desativado: não basta conhecer ou copiar um ID de jogador.
 const envList = (k) => (process.env[k] || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-const isAdmin = (pid, data) => envList('ADMIN_IDS').includes(String(pid).toLowerCase()) || (!!data && !!data.email && envList('ADMIN_EMAILS').includes(String(data.email).toLowerCase()));
+// O painel do mestre só é liberado após autenticação com um dos e-mails Google autorizados.
+const isAdmin = (_pid, data) => !!data && !!data.email && envList('ADMIN_EMAILS').includes(String(data.email).trim().toLowerCase());
 
 // ---------- CONFIGURAÇÕES AO VIVO (o mestre muda pelo painel, sem atualizar o app) ----------
 const LIVE_DEFAULT = { coinMul: 1, gemMul: 1, news: '', maint: false, gift: null };
@@ -323,7 +323,7 @@ app.get('/api/leaderboard', wrap(async (req, res) => {
 app.post('/api/level/start', auth, wrap(async (req, res) => {
   let cfg;
   if (LIVE.maint) { const row = await store.getPlayer(req.pid); if (!isAdmin(req.pid, row.data)) return res.status(503).json({ error: '🛠️ Jogo em manutenção. Volte em alguns minutos!' }); }
-  const out = await mutate(req.pid, (p) => { const r = Eco.startLevel(p, req.body.level, Date.now(), !!req.body.bonus); if (r.error) return r; cfg = r.cfg; return { ok: true }; });
+  const out = await mutate(req.pid, (p) => { const r = Eco.startLevel(p, req.body.level, Date.now(), !!req.body.bonus, req.body.loadout); if (r.error) return r; cfg = r.cfg; return { ok: true }; });
   if (out.error) return send(res, out);
   const runId = crypto.randomUUID();
   await store.insertRun(runId, req.pid, cfg);                    // só uma partida aberta por vez

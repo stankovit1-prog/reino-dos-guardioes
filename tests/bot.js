@@ -1,7 +1,7 @@
 const Sim = require('../shared/sim.js');
 // bot simples: constrói torres perto do caminho quando tem ouro, faz upgrades
 function play(level, perm={}, unlocked=[], opts={}) {
-  const cfg = {level, perm, unlocked, bonus: !!opts.bonus};
+  const cfg = {level, perm, unlocked, bonus: !!opts.bonus, ...(Array.isArray(opts.loadout) ? { loadout: opts.loadout.slice(0, 6) } : {})};
   const s = Sim.createGame(cfg); const actions = [];
   let spots = [], curPart = -1;
   const calcSpots = () => { spots = [];

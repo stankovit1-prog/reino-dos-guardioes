@@ -1,7 +1,7 @@
 name: Testes do Reino
 on:
   pull_request:
-    branches: [main]
+    branches: [main, feature/cores-google-admin-loadout]
   push:
     branches: [main, feature/home-social-auth, feature/menu-principal-navegacao-loading]
 jobs:
