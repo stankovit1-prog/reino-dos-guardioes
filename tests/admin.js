@@ -1,6 +1,6 @@
 // Testa: painel do mestre (só o mestre acessa), eventos ao vivo, presente para todos e save à prova de atualização.
-process.env.IAP_DEV_FAKE = '1'; process.env.DB_PATH = ':memory:';
-const { app } = require('../server/server.js');
+process.env.IAP_DEV_FAKE = '1'; process.env.DB_PATH = ':memory:'; process.env.ADMIN_IDS = ''; process.env.ADMIN_EMAILS = '';
+const { app, store } = require('../server/server.js');
 const Eco = require('../shared/economy.js');
 const ok = (c, m) => { console.log((c ? '✅ ' : '❌ ') + m); if (!c) process.exitCode = 1; };
 
@@ -11,10 +11,17 @@ const srv = app.listen(0, async () => {
   const m = await mestre('/api/auth/guest', { deviceId: 'a'.repeat(40) });
   const c = await cliente('/api/auth/guest', { deviceId: 'b'.repeat(40) });
   ok(m.playerId !== c.playerId, 'cada cliente tem seu próprio usuário');
-  ok(!m.isAdmin, 'antes de configurar ADMIN_IDS ninguém é mestre');
+  ok(!m.isAdmin, 'conta convidada não recebe painel de mestre');
+  // ADMIN_IDS sozinho não autoriza ninguém. O e-mail precisa estar no allow-list do Google.
   process.env.ADMIN_IDS = m.playerId;
+  const idOnly = await mestre('/api/me');
+  ok(!idOnly.isAdmin, 'ID de jogador sozinho não libera o painel');
+  process.env.ADMIN_EMAILS = 'mestre@example.com';
+  await store.withPlayer(m.playerId, p => { p.email = 'mestre@example.com'; return { ok: true }; });
   const me = await mestre('/api/me');
-  ok(me.isAdmin === true, 'conta do mestre recebe o botão do painel');
+  ok(me.isAdmin === true, 'Gmail autorizado recebe o painel do mestre');
+  await store.withPlayer(c.playerId, p => { p.email = 'outro@example.com'; return { ok: true }; });
+  ok(!(await cliente('/api/me')).isAdmin, 'outro Gmail não recebe o painel do mestre');
   ok(!(await cliente('/api/me')).isAdmin, 'cliente comum NÃO vê o painel');
   const neg = await cliente('/api/admin/overview');
   ok(neg.status === 404, 'cliente comum recebe "não encontrado" no painel');
