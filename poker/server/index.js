@@ -7,6 +7,7 @@ const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const { Pool } = require('pg');
+const { OAuth2Client } = require('google-auth-library');
 const Game = require('./game');
 
 const PORT = Number(process.env.PORT || 8080);
@@ -15,6 +16,8 @@ if (!DATABASE_URL) throw new Error('DATABASE_URL não configurado. O Poker Arena
 const PAID_ROOMS_ENABLED = process.env.PAID_ROOMS_ENABLED === 'true';
 const RAKE_PERCENT = Math.max(0, Math.min(10, Number(process.env.RAKE_PERCENT || 5)));
 const RAKE_CAP = Math.max(0, Math.floor(Number(process.env.RAKE_CAP || 100)));
+const GOOGLE_CLIENT_IDS = (process.env.GOOGLE_CLIENT_ID || '').split(',').map(v => v.trim()).filter(Boolean);
+const googleAuth = new OAuth2Client();
 const pool = new Pool({
   connectionString: DATABASE_URL,
   ssl: { rejectUnauthorized: false },
@@ -47,8 +50,11 @@ async function initDb() {
       id text PRIMARY KEY,
       username text NOT NULL,
       username_key text NOT NULL UNIQUE,
-      salt text NOT NULL,
-      password_hash text NOT NULL,
+      salt text,
+      password_hash text,
+      google_sub text UNIQUE,
+      email text,
+      picture_url text,
       created_at timestamptz NOT NULL DEFAULT now()
     );
     CREATE TABLE IF NOT EXISTS poker_sessions (
@@ -90,6 +96,15 @@ async function initDb() {
       created_at timestamptz NOT NULL DEFAULT now(),
       UNIQUE(table_id, hand_no)
     );
+  `);
+  // Migração aditiva: preserva contas existentes e permite autenticação Google.
+  await pool.query(`
+    ALTER TABLE poker_users ADD COLUMN IF NOT EXISTS google_sub text;
+    ALTER TABLE poker_users ADD COLUMN IF NOT EXISTS email text;
+    ALTER TABLE poker_users ADD COLUMN IF NOT EXISTS picture_url text;
+    ALTER TABLE poker_users ALTER COLUMN salt DROP NOT NULL;
+    ALTER TABLE poker_users ALTER COLUMN password_hash DROP NOT NULL;
+    CREATE UNIQUE INDEX IF NOT EXISTS poker_users_google_sub_uidx ON poker_users(google_sub) WHERE google_sub IS NOT NULL;
   `);
   const { rows } = await pool.query("SELECT id, state FROM poker_tables WHERE status <> 'closed' AND updated_at > now() - interval '12 hours'");
   for (const row of rows) {
@@ -154,7 +169,7 @@ async function auth(req, res, next) {
     const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
     if (!token || token.length < 32) return send(res, { error: 'Entre na sua conta para continuar.' }, 401);
     const { rows } = await pool.query(
-      `SELECT u.id, u.username FROM poker_sessions s
+      `SELECT u.id, u.username, u.email, u.picture_url FROM poker_sessions s
        JOIN poker_users u ON u.id=s.player_id
        WHERE s.token_hash=$1 AND s.expires_at > now()`,
       [hash(token)]
@@ -228,46 +243,93 @@ function publicWallet(wallet) {
 
 app.get('/health', (req, res) => res.json({ ok: true, service: 'poker-arena', database: 'connected', paidRoomsEnabled: PAID_ROOMS_ENABLED }));
 
-app.post('/api/register', asyncRoute(async (req, res) => {
-  const username = clean(req.body.username, 18);
-  const usernameKey = username.toLowerCase();
-  const password = String(req.body.password || '');
-  if (!/^[A-Za-z0-9_]{3,18}$/.test(username)) return send(res, { error: 'Use um nome de 3 a 18 caracteres: letras, números ou _.' }, 400);
-  if (password.length < 8 || password.length > 128) return send(res, { error: 'A senha precisa ter de 8 a 128 caracteres.' }, 400);
-  const salt = crypto.randomBytes(16).toString('hex');
-  const passwordHash = crypto.scryptSync(password, salt, 64).toString('hex');
+app.get('/api/config', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ googleClientId: GOOGLE_CLIENT_IDS[0] || '' });
+});
+
+function makeGoogleUsername(displayName, googleSub) {
+  const base = clean(displayName, 60).normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '')
+    .replace(/[^A-Za-z0-9_]/g, '').slice(0, 12) || 'Jogador';
+  return base + '_' + String(googleSub).slice(-5);
+}
+
+app.post('/api/auth/google', rateLimit({ windowMs: 60000, limit: 20 }), asyncRoute(async (req, res) => {
+  if (!GOOGLE_CLIENT_IDS.length) {
+    return send(res, { error: 'Login Google ainda não foi configurado no servidor.' }, 503);
+  }
+  const idToken = String(req.body.idToken || '');
+  if (idToken.length < 100 || idToken.length > 10000) {
+    return send(res, { error: 'Credencial Google inválida.' }, 400);
+  }
+  let payload;
   try {
-    const result = await withTx(async client => {
-      const id = crypto.randomUUID();
-      await client.query(
-        'INSERT INTO poker_users(id,username,username_key,salt,password_hash) VALUES($1,$2,$3,$4,$5)',
-        [id, username, usernameKey, salt, passwordHash]
-      );
-      await client.query('INSERT INTO poker_wallets(player_id,free_tokens,paid_tokens) VALUES($1,5000,0)', [id]);
-      await ledger(client, id, 'free', 5000, 'bonus_inicial', id);
-      return { id, token: await createSession(client, id) };
-    });
-    const wallet = await walletFor(result.id);
-    send(res, { ok: true, token: result.token, user: { id: result.id, username }, wallet: publicWallet(wallet) }, 201);
+    const ticket = await googleAuth.verifyIdToken({ idToken, audience: GOOGLE_CLIENT_IDS });
+    payload = ticket.getPayload();
   } catch (e) {
-    if (e.code === '23505') return send(res, { error: 'Esse nome já está em uso. Escolha outro.' }, 409);
-    throw e;
+    return send(res, { error: 'Não foi possível validar sua Conta Google. Tente novamente.' }, 401);
   }
-}));
-app.post('/api/login', asyncRoute(async (req, res) => {
-  const usernameKey = clean(req.body.username, 18).toLowerCase();
-  const password = String(req.body.password || '');
-  const { rows } = await pool.query('SELECT id,username,salt,password_hash FROM poker_users WHERE username_key=$1', [usernameKey]);
-  const user = rows[0];
-  if (!user) return send(res, { error: 'Usuário ou senha incorretos.' }, 401);
-  const actual = crypto.scryptSync(password, user.salt, 64);
-  const expected = Buffer.from(user.password_hash, 'hex');
-  if (actual.length !== expected.length || !crypto.timingSafeEqual(actual, expected)) {
-    return send(res, { error: 'Usuário ou senha incorretos.' }, 401);
+  if (!payload || !payload.sub || payload.email_verified !== true) {
+    return send(res, { error: 'Use uma Conta Google com e-mail verificado.' }, 401);
   }
-  const token = await createSession(pool, user.id);
-  const wallet = await walletFor(user.id);
-  send(res, { ok: true, token, user: { id: user.id, username: user.username }, wallet: publicWallet(wallet) });
+  const displayName = clean(payload.name || payload.given_name || 'Jogador', 60);
+  const email = String(payload.email || '').trim().toLowerCase() || null;
+  const pictureUrl = /^https:\/\//i.test(String(payload.picture || '')) ? String(payload.picture).slice(0, 1000) : null;
+
+  const result = await withTx(async client => {
+    let user = (await client.query(
+      'SELECT id, username FROM poker_users WHERE google_sub=$1 FOR UPDATE', [payload.sub]
+    )).rows[0] || null;
+
+    // Vincula contas antigas somente quando o Google é autoridade do e-mail (Gmail/Workspace).
+    if (!user && email && (email.endsWith('@gmail.com') || payload.hd)) {
+      user = (await client.query(
+        'SELECT id, username FROM poker_users WHERE lower(email)=$1 AND google_sub IS NULL LIMIT 1 FOR UPDATE', [email]
+      )).rows[0] || null;
+      if (user) {
+        await client.query(
+          'UPDATE poker_users SET google_sub=$2, email=$3, picture_url=$4 WHERE id=$1',
+          [user.id, payload.sub, email, pictureUrl]
+        );
+      }
+    }
+
+    let isNew = false;
+    if (!user) {
+      const id = crypto.randomUUID();
+      const username = makeGoogleUsername(displayName, payload.sub);
+      const usernameKey = username.toLowerCase();
+      await client.query(
+        'INSERT INTO poker_users(id,username,username_key,google_sub,email,picture_url) VALUES($1,$2,$3,$4,$5,$6)',
+        [id, username, usernameKey, payload.sub, email, pictureUrl]
+      );
+      user = { id, username };
+      await client.query(
+        'INSERT INTO poker_wallets(player_id,free_tokens,paid_tokens) VALUES($1,5000,0)',
+        [id]
+      );
+      await ledger(client, id, 'free', 5000, 'bonus_inicial', id);
+      isNew = true;
+    } else {
+      await client.query(
+        'UPDATE poker_users SET email=COALESCE($2,email), picture_url=COALESCE($3,picture_url) WHERE id=$1',
+        [user.id, email, pictureUrl]
+      );
+      await client.query(
+        'INSERT INTO poker_wallets(player_id,free_tokens,paid_tokens) VALUES($1,5000,0) ON CONFLICT(player_id) DO NOTHING',
+        [user.id]
+      );
+    }
+    const token = await createSession(client, user.id);
+    return { id: user.id, username: user.username, token, isNew };
+  });
+
+  const wallet = await walletFor(result.id);
+  send(res, {
+    ok: true, token: result.token,
+    user: { id: result.id, username: result.username, email, pictureUrl },
+    wallet: publicWallet(wallet), newAccount: result.isNew
+  });
 }));
 app.get('/api/me', auth, asyncRoute(async (req, res) => {
   const wallet = await walletFor(req.user.id);
