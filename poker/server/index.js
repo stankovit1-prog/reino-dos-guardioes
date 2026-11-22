@@ -27,6 +27,7 @@ const pool = new Pool({
 });
 const app = express();
 const rooms = new Map();
+const housekeepingRooms = new WeakSet();
 const clean = (v, max = 32) => String(v || '').replace(/[<>&"]/g, '').trim().slice(0, max);
 const hash = (v) => crypto.createHash('sha256').update(String(v)).digest('hex');
 const randomCode = () => {
@@ -193,6 +194,11 @@ async function refundSeat(room, seat) {
   }
   seat.left = true;
   seat.leaveAfterHand = false;
+  if (!room.seats.some(s => !s.left && !s.isBot)) {
+    for (const bot of room.seats.filter(s => s.isBot)) bot.left = true;
+    room.status = 'closed';
+    room.nextHandAt = null;
+  }
   if (room.seats.every(s => s.left)) room.status = 'closed';
   await saveRoom(room);
 }
@@ -210,22 +216,55 @@ async function recordRake(room) {
   );
 }
 async function runHousekeeping(room) {
-  if (room.status === 'playing' && room.hand && room.hand.currentPlayer) {
-    const seat = room.seats.find(s => s.id === room.hand.currentPlayer);
-    if (seat && Date.now() - (room.hand.turnStartedAt || room.hand.startedAt) > 30000) {
-      Game.applyAction(room, seat.playerId, { type: room.hand.currentBet > seat.streetBet ? 'fold' : 'check' });
-      if (room.hand.stage === 'complete') {
-        await recordRake(room);
-        await finishDepartures(room);
+  if (housekeepingRooms.has(room)) return;
+  housekeepingRooms.add(room);
+  try {
+    const now = Date.now();
+
+    // Dá um pequeno prazo para pessoas reais entrarem; depois, a CPU completa as vagas.
+    if (room.status === 'waiting' && room.botsEnabled && room.botFillAt && now >= room.botFillAt &&
+        (!room.hand || room.hand.stage === 'complete')) {
+      let count = room.seats.filter(s => !s.left).length;
+      while (count < room.maxPlayers) {
+        const added = Game.addBotSeat(room, room.buyIn);
+        if (!added.ok) break;
+        count++;
       }
+      room.botFillAt = null;
+      if (room.seats.filter(s => !s.left && s.stack > 0).length >= 2) Game.startHand(room);
       await saveRoom(room);
     }
-  }
-  if (room.status === 'waiting' && room.hand && room.hand.stage === 'complete' && room.nextHandAt && Date.now() >= room.nextHandAt) {
-    const active = room.seats.filter(s => !s.left && s.stack > 0);
-    if (active.length >= 2) Game.startHand(room);
-    else room.nextHandAt = null;
-    await saveRoom(room);
+
+    if (room.status === 'playing' && room.hand && room.hand.currentPlayer) {
+      const seat = room.seats.find(s => s.id === room.hand.currentPlayer);
+      const elapsed = seat ? now - (room.hand.turnStartedAt || room.hand.startedAt) : 0;
+      if (seat && seat.isBot && elapsed > (seat.thinkMs || 1400)) {
+        let result = Game.applyAction(room, seat.playerId, Game.chooseBotAction(room, seat));
+        if (result.error) {
+          const fallback = room.hand.currentBet > seat.streetBet ? 'fold' : 'check';
+          result = Game.applyAction(room, seat.playerId, { type: fallback });
+        }
+        if (result.finished && result.result && result.result.rake) await recordRake(room);
+        if (room.hand.stage === 'complete') await finishDepartures(room);
+        await saveRoom(room);
+      } else if (seat && !seat.isBot && elapsed > 30000) {
+        Game.applyAction(room, seat.playerId, { type: room.hand.currentBet > seat.streetBet ? 'fold' : 'check' });
+        if (room.hand.stage === 'complete') {
+          await recordRake(room);
+          await finishDepartures(room);
+        }
+        await saveRoom(room);
+      }
+    }
+
+    if (room.status === 'waiting' && room.hand && room.hand.stage === 'complete' && room.nextHandAt && now >= room.nextHandAt) {
+      const active = room.seats.filter(s => !s.left && s.stack > 0);
+      if (active.length >= 2) Game.startHand(room);
+      else room.nextHandAt = null;
+      await saveRoom(room);
+    }
+  } finally {
+    housekeepingRooms.delete(room);
   }
 }
 function publicTable(room, playerId) {
@@ -366,6 +405,69 @@ app.get('/api/tables', auth, asyncRoute(async (req, res) => {
   }
   send(res, { ok: true, tables: list.sort((a,b)=>b.players-a.players) });
 }));
+app.post('/api/tables/quick', auth, asyncRoute(async (req, res) => {
+  // Prioriza uma mesa pública com pessoas aguardando e espaço para mais um participante.
+  const candidates = [...rooms.values()]
+    .filter(r => r.mode === 'free' && !r.private && r.botsEnabled && r.status === 'waiting' &&
+      r.seats.some(s => !s.left && !s.isBot) &&
+      r.seats.filter(s => !s.left).length < r.maxPlayers &&
+      !r.seats.some(s => s.playerId === req.user.id && !s.left))
+    .sort((a, b) => b.seats.filter(s => !s.left && !s.isBot).length - a.seats.filter(s => !s.left && !s.isBot).length);
+
+  for (const room of candidates) {
+    await runHousekeeping(room);
+    if (room.status !== 'waiting' || room.seats.filter(s => !s.left).length >= room.maxPlayers) continue;
+    const joined = await withTx(async client => {
+      const debit = await client.query(
+        'UPDATE poker_wallets SET free_tokens=free_tokens-$2 WHERE player_id=$1 AND free_tokens >= $2 RETURNING free_tokens',
+        [req.user.id, room.buyIn]
+      );
+      if (!debit.rowCount) return false;
+      const added = Game.addSeat(room, req.user.id, req.user.username, room.buyIn);
+      if (added.error) throw new Error(added.error);
+      await ledger(client, req.user.id, 'free', -room.buyIn, 'entrada_mesa', room.id + ':quick:' + room.handNo);
+      await client.query('UPDATE poker_tables SET state=$2::jsonb,updated_at=now() WHERE id=$1',
+        [room.id, JSON.stringify(room)]);
+      return true;
+    });
+    if (!joined) return send(res, { error: 'Saldo gratuito insuficiente para entrar na mesa.' }, 400);
+    if (room.seats.filter(s => !s.left && s.stack > 0).length >= 2 &&
+        (!room.hand || room.hand.stage === 'complete')) Game.startHand(room);
+    await saveRoom(room);
+    return send(res, { ok: true, table: publicTable(room, req.user.id), wallet: publicWallet(await walletFor(req.user.id)) });
+  }
+
+  const id = crypto.randomUUID();
+  let code = randomCode();
+  while ((await pool.query('SELECT 1 FROM poker_tables WHERE code=$1', [code])).rowCount) code = randomCode();
+  const buyIn = 500, maxPlayers = 6;
+  const room = Game.freshRoom({
+    id, code, ownerId: req.user.id, ownerName: req.user.username,
+    name: 'Partida rápida', maxPlayers, buyIn, smallBlind: 5, bigBlind: 10,
+    mode: 'free', rakePercent: RAKE_PERCENT, rakeCap: RAKE_CAP
+  });
+  room.private = false;
+  room.botsEnabled = true;
+  room.quickMatch = true;
+  room.botFillAt = Date.now() + 9000;
+  const created = await withTx(async client => {
+    const debit = await client.query(
+      'UPDATE poker_wallets SET free_tokens=free_tokens-$2 WHERE player_id=$1 AND free_tokens >= $2 RETURNING free_tokens',
+      [req.user.id, buyIn]
+    );
+    if (!debit.rowCount) return false;
+    await ledger(client, req.user.id, 'free', -buyIn, 'entrada_mesa', id);
+    await client.query(
+      'INSERT INTO poker_tables(id,code,owner_id,status,mode,state) VALUES($1,$2,$3,$4,$5,$6::jsonb)',
+      [room.id, room.code, room.ownerId, room.status, room.mode, JSON.stringify(room)]
+    );
+    return true;
+  });
+  if (!created) return send(res, { error: 'Saldo gratuito insuficiente para iniciar a partida.' }, 400);
+  rooms.set(room.id, room);
+  send(res, { ok: true, table: publicTable(room, req.user.id), wallet: publicWallet(await walletFor(req.user.id)) }, 201);
+}));
+
 app.post('/api/tables', auth, asyncRoute(async (req, res) => {
   const name = clean(req.body.name || 'Mesa aberta', 28) || 'Mesa aberta';
   const buyIn = Math.floor(Number(req.body.buyIn || 500));
@@ -380,6 +482,8 @@ app.post('/api/tables', auth, asyncRoute(async (req, res) => {
     smallBlind: Math.max(1, Math.floor(buyIn / 100)), bigBlind: Math.max(2, Math.floor(buyIn / 50)), mode: 'free', rakePercent: RAKE_PERCENT, rakeCap: RAKE_CAP
   });
   room.private = isPrivate;
+  room.botsEnabled = req.body.botsEnabled !== false;
+  room.botFillAt = room.botsEnabled ? Date.now() + 12000 : null;
   const created = await withTx(async client => {
     const debit = await client.query(
       'UPDATE poker_wallets SET free_tokens=free_tokens-$2 WHERE player_id=$1 AND free_tokens >= $2 RETURNING free_tokens',
