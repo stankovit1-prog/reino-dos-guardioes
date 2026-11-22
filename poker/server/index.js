@@ -197,7 +197,7 @@ async function recordRake(room) {
 async function runHousekeeping(room) {
   if (room.status === 'playing' && room.hand && room.hand.currentPlayer) {
     const seat = room.seats.find(s => s.id === room.hand.currentPlayer);
-    if (seat && Date.now() - room.hand.startedAt > 30000) {
+    if (seat && Date.now() - (room.hand.turnStartedAt || room.hand.startedAt) > 30000) {
       Game.applyAction(room, seat.playerId, { type: room.hand.currentBet > seat.streetBet ? 'fold' : 'check' });
       if (room.hand.stage === 'complete') {
         await recordRake(room);
@@ -315,7 +315,7 @@ app.post('/api/tables', auth, asyncRoute(async (req, res) => {
   while ((await pool.query('SELECT 1 FROM poker_tables WHERE code=$1', [code])).rowCount) code = randomCode();
   const room = Game.freshRoom({
     id, code, ownerId: req.user.id, ownerName: req.user.username, name, maxPlayers, buyIn,
-    smallBlind: Math.max(1, Math.floor(buyIn / 100)), bigBlind: Math.max(2, Math.floor(buyIn / 50)), mode: 'free'
+    smallBlind: Math.max(1, Math.floor(buyIn / 100)), bigBlind: Math.max(2, Math.floor(buyIn / 50)), mode: 'free', rakePercent: RAKE_PERCENT, rakeCap: RAKE_CAP
   });
   room.private = isPrivate;
   const created = await withTx(async client => {
