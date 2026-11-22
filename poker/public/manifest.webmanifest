@@ -1,0 +1,21 @@
+{
+  "id": "/",
+  "name": "Poker Arena BR",
+  "short_name": "Poker Arena",
+  "description": "Texas Hold'em online com amigos e adversários CPU.",
+  "lang": "pt-BR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#071512",
+  "theme_color": "#071b18",
+  "icons": [
+    {
+      "src": "/poker-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
