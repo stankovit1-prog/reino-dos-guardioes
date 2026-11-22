@@ -1,6 +1,6 @@
 'use strict';
 const assert = require('node:assert/strict');
-const { bestOfSeven, compareRank, makeDeck, freshRoom, addSeat, startHand, applyAction } = require('./game');
+const { bestOfSeven, compareRank, makeDeck, freshRoom, addSeat, addBotSeat, chooseBotAction, startHand, applyAction } = require('./game');
 
 const deck = makeDeck();
 assert.equal(deck.length, 52);
@@ -29,4 +29,22 @@ for(let i=0;i<12 && room.hand.stage!=='complete';i++){
   assert.equal(result.ok,true);
 }
 assert(room.hand.stage==='complete' || room.hand.pot>15);
+
+const botRoom = freshRoom({id:'bot-table',code:'BOT234',ownerId:'human-1',ownerName:'Jogador'});
+assert.equal(addBotSeat(botRoom,500).ok,true);
+assert.equal(addBotSeat(botRoom,500).ok,true);
+const bots = botRoom.seats.filter(s=>s.isBot);
+assert.equal(bots.length,2);
+assert.deepEqual(bots.map(s=>s.username),['PC1','PC2']);
+assert.notEqual(bots[0].playerId,bots[1].playerId);
+startHand(botRoom);
+const humanTurn = botRoom.seats.find(s=>s.id===botRoom.hand.currentPlayer);
+assert.equal(humanTurn.playerId,'human-1');
+assert.equal(applyAction(botRoom,'human-1',{type:'call'}).ok,true);
+const botTurn = botRoom.seats.find(s=>s.id===botRoom.hand.currentPlayer);
+assert.equal(botTurn.isBot,true);
+const botAction = chooseBotAction(botRoom,botTurn);
+assert(['fold','check','call','raise','allin'].includes(botAction.type));
+assert.equal(applyAction(botRoom,botTurn.playerId,botAction).ok,true);
+
 console.log('Poker Arena: testes do baralho, ranking de mãos e fluxo inicial passaram.');
