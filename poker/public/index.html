@@ -15,7 +15,7 @@ input{width:100%;background:#081b16;color:var(--white);border:1px solid var(--li
 .tabs{display:flex;gap:8px;margin-bottom:16px}.tab{flex:1;background:#122c25;color:var(--muted);border:1px solid var(--line)}.tab.active{background:#24483d;color:var(--white);border-color:#558975}
 .table-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(225px,1fr));gap:12px}.table-card{background:#0b201a;border:1px solid var(--line);border-radius:15px;padding:15px;display:grid;gap:10px}.table-card h3{font-size:15px;margin:0}.table-meta{display:flex;justify-content:space-between;color:var(--muted);font-size:12px}.pill{display:inline-block;border-radius:99px;padding:4px 9px;background:#193c31;color:var(--mint);font-size:10px;font-weight:800;letter-spacing:.05em}
 .empty{border:1px dashed #315a4c;border-radius:15px;padding:27px;text-align:center;color:var(--muted);grid-column:1/-1}
-#auth{max-width:430px;margin:8vh auto;padding:24px}.auth-title{text-align:center;margin-bottom:22px}.auth-title .logo{margin:0 auto 12px;width:60px;height:60px}.auth-title h2{margin:0 0 6px}.auth-title p{margin:0;color:var(--muted);font-size:13px}.auth-toggle{display:flex;gap:8px;margin:14px 0}.auth-toggle button{flex:1}
+#auth{max-width:430px;margin:8vh auto;padding:24px}.google-signin{display:flex;justify-content:center;min-height:46px;margin:18px 0 10px}.auth-status{text-align:center;color:var(--muted);font-size:12px;min-height:18px}.auth-title{text-align:center;margin-bottom:22px}.auth-title .logo{margin:0 auto 12px;width:60px;height:60px}.auth-title h2{margin:0 0 6px}.auth-title p{margin:0;color:var(--muted);font-size:13px}
 .table-view{display:none}.table-view.active{display:block}.table-head{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}.felt{margin:18px 0;background:radial-gradient(ellipse,#1e7652 0,#14543e 60%,#0b3529 100%);border:10px solid #5b3b24;outline:4px solid #a77a43;border-radius:44px;padding:25px;min-height:340px;box-shadow:inset 0 0 55px #04170e,0 20px 50px #0007}.seats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.seat{min-height:75px;border:1px solid #9cd3ad55;background:#09251dcc;border-radius:13px;padding:10px;display:flex;flex-direction:column;justify-content:center;gap:5px;position:relative}.seat.me{border:2px solid var(--gold);background:#123a2a}.seat.turn{box-shadow:0 0 0 2px var(--mint),0 0 20px #8cffbd77}.seat .name{font-weight:800;font-size:12px;overflow:hidden;text-overflow:ellipsis}.seat .chips{font-size:11px;color:#f5d88c}.seat .last{font-size:10px;color:#b7d2c1}.dealer{color:var(--gold);font-size:10px;margin-left:5px}.cards{display:flex;justify-content:center;gap:7px;min-height:70px;align-items:center;margin:14px 0}.card{width:44px;height:62px;background:#faf9f1;color:#19261f;border-radius:7px;box-shadow:0 4px 9px #0005;display:flex;flex-direction:column;justify-content:space-between;padding:5px;font-weight:900;font-size:15px}.card.red{color:#c33d42}.card.back{background:repeating-linear-gradient(45deg,#1a3d75,#1a3d75 5px,#f4e9d0 5px,#f4e9d0 7px);border:3px solid #f7f2dd}.card .suit{font-size:16px}.board{text-align:center}.pot{color:#ffdf8c;font-weight:900;font-size:17px;text-shadow:0 2px 5px #0008}.stage{font-size:11px;color:#d7e8da;text-transform:uppercase;letter-spacing:.16em;margin-top:3px}.actionbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.actionbar button{flex:1;min-width:100px}.actionbar input{max-width:140px}.history{background:#0b201a;border:1px solid var(--line);border-radius:12px;padding:12px;max-height:128px;overflow:auto}.history div{font-size:11px;color:var(--muted);padding:3px 0}.premium{border:1px solid #765d2d;background:linear-gradient(145deg,#2b2617,#17241c);border-radius:15px;padding:16px}.premium h3{color:#e7cb84}.disabled-note{background:#3b3320;color:#edd69c;padding:8px 10px;border-radius:9px;font-size:11px;display:inline-block}
 .notice{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#e9d5a2;color:#1d2b20;padding:12px 17px;border-radius:12px;font-weight:800;box-shadow:0 8px 35px #0007;z-index:20;display:none;max-width:90vw}
 @media(max-width:850px){.layout{grid-template-columns:1fr}.wrap{padding:13px}.top{align-items:flex-start;flex-direction:column}.wallet{width:100%}.balance{flex:1}.felt{padding:15px;border-width:7px;border-radius:26px}.seats{gap:7px}.seat{padding:7px;min-height:68px}.card{width:36px;height:52px}.table-head{align-items:flex-start}}
@@ -35,14 +35,10 @@ input{width:100%;background:#081b16;color:var(--white);border:1px solid var(--li
   </header>
 
   <section id="auth" class="panel">
-    <div class="auth-title"><div class="logo">♠</div><h2>Entre no Poker Arena</h2><p>Crie sua conta e comece com 5.000 fichas gratuitas.</p></div>
-    <div class="auth-toggle"><button id="mode-login" class="tab active">Entrar</button><button id="mode-register" class="tab">Criar conta</button></div>
-    <form id="auth-form" class="stack">
-      <div class="field"><label>Nome de jogador</label><input id="username" minlength="3" maxlength="18" autocomplete="username" placeholder="Ex.: Guardiao123" required></div>
-      <div class="field"><label>Senha</label><input id="password" type="password" minlength="8" maxlength="128" autocomplete="current-password" placeholder="Mínimo de 8 caracteres" required></div>
-      <button class="btn-gold" id="auth-submit">Entrar</button>
-      <p class="tiny">Fichas gratuitas são virtuais e não podem ser convertidas em dinheiro.</p>
-    </form>
+    <div class="auth-title"><div class="logo">♠</div><h2>Entre no Poker Arena</h2><p>Use sua Conta Google. No primeiro acesso, sua conta é criada automaticamente com 5.000 fichas gratuitas.</p></div>
+    <div id="google-button" class="google-signin"></div>
+    <p id="google-status" class="auth-status" aria-live="polite">Carregando o acesso seguro do Google…</p>
+    <p class="tiny" style="text-align:center">Seu progresso e suas fichas ficam vinculados à sua Conta Google. As fichas gratuitas são virtuais e não têm valor em dinheiro.</p>
   </section>
 
   <main id="app" style="display:none">
@@ -97,7 +93,7 @@ input{width:100%;background:#081b16;color:var(--white);border:1px solid var(--li
 const $ = id => document.getElementById(id);
 const fmt = n => Number(n||0).toLocaleString('pt-BR');
 let token = localStorage.getItem('poker_token') || '';
-let me = null, wallet = null, activeTable = null, authMode = 'login', poll = null, busy = false;
+let me = null, wallet = null, activeTable = null, poll = null, busy = false;
 const API = async (url, opts={}) => {
   const response = await fetch(url, { ...opts, headers: { 'Content-Type':'application/json', ...(token?{Authorization:'Bearer '+token}:{}), ...(opts.headers||{}) } });
   const data = await response.json().catch(()=>({error:'Resposta inválida do servidor.'}));
@@ -117,26 +113,68 @@ function logout() {
   token='';me=null;activeTable=null;localStorage.removeItem('poker_token');clearInterval(poll);
   $('app').style.display='none';$('wallet').style.display='none';$('auth').style.display='block';$('table-view').classList.remove('active');$('lobby-view').style.display='grid';
 }
-function setAuthMode(mode) {
-  authMode=mode;$('mode-login').classList.toggle('active',mode==='login');$('mode-register').classList.toggle('active',mode==='register');
-  $('auth-submit').textContent=mode==='login'?'Entrar':'Criar minha conta';
-}
-$('mode-login').onclick=()=>setAuthMode('login');
-$('mode-register').onclick=()=>setAuthMode('register');
-$('auth-form').onsubmit=async e=>{
-  e.preventDefault();$('auth-submit').disabled=true;
+async function handleGoogleCredential(response) {
+  if (!response || !response.credential) {
+    notice('O Google não retornou uma credencial. Tente novamente.');
+    return;
+  }
+  $('google-status').textContent='Validando sua Conta Google…';
   try {
-    const out=await API(authMode==='login'?'/api/login':'/api/register',{method:'POST',body:JSON.stringify({username:$('username').value,password:$('password').value})});
-    if(!out.ok){notice(out.error||'Não foi possível entrar.');return;}
-    token=out.token;localStorage.setItem('poker_token',token);me=out.user;setWallet(out.wallet);showApp();await loadTables();
-  } catch(err){notice('Falha de conexão. Tente novamente.');}
-  finally{$('auth-submit').disabled=false;}
-};
+    const out=await API('/api/auth/google',{method:'POST',body:JSON.stringify({idToken:response.credential})});
+    if(!out.ok) {
+      $('google-status').textContent=out.error || 'Não foi possível entrar com Google.';
+      return;
+    }
+    token=out.token;localStorage.setItem('poker_token',token);
+    me=out.user;setWallet(out.wallet);showApp();$('google-status').textContent='';
+    if(out.newAccount) notice('Conta criada! Você recebeu 5.000 fichas gratuitas.');
+    await loadTables();
+  } catch(err) {
+    $('google-status').textContent='Falha de conexão. Tente novamente.';
+  }
+}
+async function initGoogleLogin() {
+  try {
+    const cfg=await fetch('/api/config',{cache:'no-store'}).then(r=>r.json());
+    if(!cfg.googleClientId) {
+      $('google-status').textContent='Login Google aguardando a configuração do Client ID do projeto.';
+      return;
+    }
+    const script=document.createElement('script');
+    script.src='https://accounts.google.com/gsi/client';
+    script.async=true;script.defer=true;
+    script.onload=()=>{
+      if(!window.google || !google.accounts || !google.accounts.id) {
+        $('google-status').textContent='Não foi possível carregar o acesso do Google.';
+        return;
+      }
+      google.accounts.id.initialize({
+        client_id:cfg.googleClientId,
+        callback:handleGoogleCredential,
+        auto_select:false,
+        cancel_on_tap_outside:true
+      });
+      google.accounts.id.renderButton($('google-button'),{
+        type:'standard',theme:'filled_blue',size:'large',text:'continue_with',
+        shape:'pill',logo_alignment:'left',width:320
+      });
+      $('google-status').textContent='Entre ou crie sua conta com Google.';
+    };
+    script.onerror=()=>{$('google-status').textContent='Falha ao carregar o serviço de login do Google.';};
+    document.head.appendChild(script);
+  } catch(err) {
+    $('google-status').textContent='Não foi possível preparar o login Google.';
+  }
+}
 async function init() {
-  if(!token)return;
-  const out=await API('/api/me');
-  if(!out.ok){logout();return;}
-  me=out.user;setWallet(out.wallet);showApp();await loadTables();
+  if(token) {
+    const out=await API('/api/me');
+    if(out.ok) {
+      me=out.user;setWallet(out.wallet);showApp();await loadTables();return;
+    }
+    logout();
+  }
+  await initGoogleLogin();
 }
 $('logout').onclick=logout;
 async function loadTables() {
