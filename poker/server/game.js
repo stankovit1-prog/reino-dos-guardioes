@@ -279,6 +279,80 @@ function applyAction(room, playerId, action) {
   room.updatedAt = Date.now();
   return { ok: true, finished: room.hand.stage === 'complete', result: room.hand.result };
 }
+function addBotSeat(room, buyIn = room.buyIn) {
+  const botNo = room.seats.reduce((max, s) => Math.max(max, Number(s.botNo || 0)), 0) + 1;
+  const styles = ['tight', 'balanced', 'aggressive', 'balanced', 'loose'];
+  room.seats.push({
+    id: crypto.randomUUID(),
+    playerId: 'cpu:' + room.id + ':' + botNo,
+    username: 'PC' + botNo,
+    isBot: true,
+    botNo,
+    botStyle: styles[(botNo - 1) % styles.length],
+    thinkMs: 1000 + crypto.randomInt(1600),
+    stack: buyIn,
+    totalHands: 0,
+    left: false,
+    leaveAfterHand: false
+  });
+  room.updatedAt = Date.now();
+  return { ok: true, botNo };
+}
+
+function estimateBotEquity(room, seat, samples = 55) {
+  const h = room.hand;
+  const opponents = room.seats.filter(s => !s.left && !s.folded && s.id !== seat.id);
+  if (!h || !seat.holeCards || seat.holeCards.length !== 2) return 0.5;
+  if (!opponents.length) return 1;
+  const known = new Set([...seat.holeCards, ...h.community].map(c => c.rank + c.suit));
+  let equity = 0;
+  for (let n = 0; n < samples; n++) {
+    const deck = makeDeck().filter(c => !known.has(c.rank + c.suit));
+    const board = h.community.slice();
+    while (board.length < 5) board.push(deck.pop());
+    const heroRank = bestOfSeven([...seat.holeCards, ...board]);
+    const ranks = [heroRank];
+    for (let i = 0; i < opponents.length; i++) {
+      ranks.push(bestOfSeven([deck.pop(), deck.pop(), ...board]));
+    }
+    let best = ranks[0];
+    for (let i = 1; i < ranks.length; i++) if (compareRank(ranks[i], best) > 0) best = ranks[i];
+    const winners = ranks.filter(r => compareRank(r, best) === 0).length;
+    if (compareRank(heroRank, best) === 0) equity += 1 / winners;
+  }
+  return equity / samples;
+}
+
+function chooseBotAction(room, seat) {
+  const h = room.hand;
+  if (!h || !seat || !seat.isBot) return { type: 'check' };
+  const equity = estimateBotEquity(room, seat);
+  const aggression = ({ tight: 0.28, balanced: 0.48, aggressive: 0.68, loose: 0.78 })[seat.botStyle] || 0.48;
+  const random = () => crypto.randomInt(1000) / 1000;
+  const call = Math.max(0, h.currentBet - (seat.streetBet || 0));
+  const maxTarget = (seat.streetBet || 0) + seat.stack;
+  const minTarget = h.currentBet + h.minRaise;
+  const canRaise = maxTarget >= minTarget && maxTarget > h.currentBet;
+
+  if (call === 0) {
+    if (equity > 0.76 && canRaise && random() < aggression) {
+      const target = Math.min(maxTarget, Math.max(minTarget, h.currentBet + room.bigBlind * 2));
+      return { type: 'raise', amount: target };
+    }
+    if (equity > 0.94 && maxTarget > h.currentBet && random() < 0.12) return { type: 'allin' };
+    return { type: 'check' };
+  }
+
+  const potOdds = call / Math.max(1, h.pot + call);
+  if (call >= seat.stack) return equity >= potOdds * 0.82 ? { type: 'call' } : { type: 'fold' };
+  if (equity < Math.max(0.06, potOdds - 0.04 + (0.5 - aggression) * 0.10)) return { type: 'fold' };
+  if (equity > 0.84 && canRaise && random() < aggression * 0.7) {
+    const target = Math.min(maxTarget, Math.max(minTarget, h.currentBet + room.bigBlind * 2));
+    return { type: 'raise', amount: target };
+  }
+  return { type: 'call' };
+}
+
 function publicRoom(room, playerId) {
   const h = room.hand;
   const me = room.seats.find(s=>s.playerId===playerId && !s.left);
@@ -287,7 +361,7 @@ function publicRoom(room, playerId) {
     maxPlayers: room.maxPlayers, buyIn: room.buyIn, smallBlind: room.smallBlind, bigBlind: room.bigBlind,
     handNo: room.handNo, dealerId: room.dealerId, nextHandAt: room.nextHandAt,
     players: room.seats.filter(s=>!s.left).map(s=>({
-      id:s.id, username:s.username, stack:s.stack, streetBet:s.streetBet||0,
+      id:s.id, username:s.username, isBot:!!s.isBot, botLabel:s.isBot?'CPU':null, stack:s.stack, streetBet:s.streetBet||0,
       folded:!!s.folded, allIn:!!s.allIn, lastAction:s.lastAction||'',
       isMe:s.playerId===playerId, isDealer:s.id===room.dealerId,
       cards: (!h || (h.stage==='complete' && !s.folded) || s.playerId===playerId) ? (s.holeCards||[]) : []
@@ -305,4 +379,4 @@ function publicRoom(room, playerId) {
   };
 }
 
-module.exports = { freshRoom, addSeat, startHand, applyAction, publicRoom, makeDeck, bestOfSeven, compareRank, finishHand };
+module.exports = { freshRoom, addSeat, addBotSeat, chooseBotAction, startHand, applyAction, publicRoom, makeDeck, bestOfSeven, compareRank, finishHand };
