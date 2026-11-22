@@ -31,10 +31,10 @@ function orderedSeats(room, afterIndex, predicate) {
   }
   return out;
 }
-function freshRoom({ id, code, ownerId, ownerName, name, maxPlayers = 6, buyIn = 500, smallBlind = 5, bigBlind = 10, mode = 'free' }) {
+function freshRoom({ id, code, ownerId, ownerName, name, maxPlayers = 6, buyIn = 500, smallBlind = 5, bigBlind = 10, mode = 'free', rakePercent = 5, rakeCap = 100 }) {
   const room = {
     id, code, ownerId, name: String(name || 'Mesa aberta').slice(0, 28),
-    maxPlayers, buyIn, smallBlind, bigBlind, mode, status: 'waiting',
+    maxPlayers, buyIn, smallBlind, bigBlind, mode, rakePercent, rakeCap, status: 'waiting',
     seats: [{ id: crypto.randomUUID(), playerId: ownerId, username: ownerName, stack: buyIn, totalHands: 0, left: false, leaveAfterHand: false }],
     dealerId: null, handNo: 0, hand: null, nextHandAt: null,
     history: ['Mesa criada. Aguardando jogadores.'], updatedAt: Date.now()
@@ -74,7 +74,7 @@ function startHand(room) {
   const hand = {
     handNo: room.handNo, deck, community: [], stage: 'preflop',
     pot: 0, currentBet: 0, minRaise: room.bigBlind,
-    currentPlayer: null, pending: [], startedAt: Date.now(), result: null
+    currentPlayer: null, pending: [], startedAt: Date.now(), turnStartedAt: Date.now(), result: null
   };
   for (const s of room.seats) {
     s.holeCards = [];
@@ -149,7 +149,7 @@ function bestOfSeven(cards) {
 function finishHand(room, uncontested = false) {
   const h = room.hand;
   const potTotal = h.pot;
-  const fee = room.mode === 'paid' ? Math.min(Math.floor(potTotal * 0.05), 100) : 0;
+  const fee = room.mode === 'paid' ? Math.min(Math.floor(potTotal * (Number(room.rakePercent ?? 5) / 100)), Number(room.rakeCap ?? 100)) : 0;
   const paidOut = Math.max(0, potTotal - fee);
   const payouts = {};
   const winners = [];
@@ -173,12 +173,13 @@ function finishHand(room, uncontested = false) {
       const tied = scored.filter(x => compareRank(x.rank,best) === 0).map(x => x.seat);
       const each = Math.floor(layer / tied.length), odd = layer % tied.length;
       for (const seat of tied) {
-        const extra = (odd > 0 && orderedSeats(room, room.seats.findIndex(s=>s.id===room.dealerId), s=>s.id===seat.id).length) ? 0 : 0;
         payouts[seat.id] = (payouts[seat.id] || 0) + each;
         seat.stack += each;
       }
+      const tiedSet = new Set(tied.map(s=>s.id));
+      const oddOrder = orderedSeats(room, room.seats.findIndex(s=>s.id===room.dealerId), s=>tiedSet.has(s.id));
       for (let i = 0; i < odd; i++) {
-        const winner = tied[i % tied.length];
+        const winner = oddOrder[i % oddOrder.length];
         winner.stack++;
         payouts[winner.id] = (payouts[winner.id] || 0) + 1;
       }
@@ -221,6 +222,7 @@ function advanceStreet(room) {
   for (const s of room.seats) s.streetBet = 0;
   h.pending = orderedSeats(room, room.seats.findIndex(s=>s.id===room.dealerId), s => !s.left && !s.folded && !s.allIn).map(s=>s.id);
   h.currentPlayer = h.pending[0] || null;
+  h.turnStartedAt = Date.now();
   if (h.pending.length === 0) return runOut(room);
 }
 function applyAction(room, playerId, action) {
@@ -228,7 +230,7 @@ function applyAction(room, playerId, action) {
   if (!h || room.status !== 'playing' || !h.currentPlayer) return { error: 'A mão não está aceitando jogadas.' };
   const seat = room.seats.find(s => s.playerId === playerId && !s.left);
   if (!seat || seat.id !== h.currentPlayer) return { error: 'Ainda não é sua vez.' };
-  const type = String(action?.type || '');
+  const type = seat.leaveAfterHand ? 'fold' : String(action?.type || '');
   const callAmount = Math.max(0, h.currentBet - seat.streetBet);
   if (type === 'fold') {
     seat.folded = true; seat.lastAction = 'Desistiu';
@@ -242,20 +244,27 @@ function applyAction(room, playerId, action) {
     room.history.unshift(seat.username + (type === 'call' ? ' pagou ' + n : ' deu mesa') + '.');
     h.pending = h.pending.filter(id=>id!==seat.id);
   } else if (type === 'raise' || type === 'bet' || type === 'allin') {
-    const target = type === 'allin' ? seat.streetBet + seat.stack : Math.floor(Number(action.amount));
     const maxTarget = seat.streetBet + seat.stack;
-    if (!Number.isFinite(target) || target <= h.currentBet || target > maxTarget) return { error: 'Valor de aposta inválido.' };
-    const raiseBy = target - h.currentBet;
-    const isAllIn = target === maxTarget;
-    if (raiseBy < h.minRaise && !isAllIn) return { error: 'Aumente pelo menos ' + h.minRaise + ' fichas acima da aposta atual.' };
+    const target = type === 'allin' ? maxTarget : Math.floor(Number(action.amount));
+    if (!Number.isFinite(target) || target <= seat.streetBet || target > maxTarget) return { error: 'Valor de aposta inválido.' };
+    const oldBet = h.currentBet;
+    const isAllIn = type === 'allin';
+    const raiseBy = target - oldBet;
+    const isRaise = target > oldBet;
+    if (isRaise && raiseBy < h.minRaise && !isAllIn) return { error: 'Aumente pelo menos ' + h.minRaise + ' fichas acima da aposta atual.' };
     const n = contribute(seat, target - seat.streetBet);
     h.pot += n;
-    const oldBet = h.currentBet;
-    h.currentBet = seat.streetBet;
-    if (h.currentBet - oldBet >= h.minRaise) h.minRaise = h.currentBet - oldBet;
-    seat.lastAction = (oldBet === 0 ? 'Apostou ' : 'Aumentou para ') + h.currentBet;
-    room.history.unshift(seat.username + ' ' + seat.lastAction.toLowerCase() + '.');
-    h.pending = orderedSeats(room, room.seats.findIndex(s=>s.id===seat.id), s => !s.left && !s.folded && !s.allIn && s.streetBet < h.currentBet).map(s=>s.id);
+    if (isRaise) {
+      h.currentBet = seat.streetBet;
+      if (raiseBy >= h.minRaise) h.minRaise = raiseBy;
+      seat.lastAction = (oldBet === 0 ? 'Apostou ' : 'Aumentou para ') + h.currentBet;
+      room.history.unshift(seat.username + ' ' + seat.lastAction.toLowerCase() + '.');
+      h.pending = orderedSeats(room, room.seats.findIndex(s=>s.id===seat.id), s => !s.left && !s.folded && !s.allIn && s.streetBet < h.currentBet).map(s=>s.id);
+    } else {
+      seat.lastAction = 'All-in para pagar ' + n;
+      room.history.unshift(seat.username + ' foi all-in para pagar.');
+      h.pending = h.pending.filter(id=>id!==seat.id);
+    }
   } else return { error: 'Jogada desconhecida.' };
 
   room.history = room.history.slice(0, 12);
@@ -265,7 +274,7 @@ function applyAction(room, playerId, action) {
     const canAct = contenders.filter(s=>!s.allIn);
     if (!canAct.length) runOut(room);
     else if (!h.pending.length) advanceStreet(room);
-    else h.currentPlayer = h.pending[0];
+    else { h.currentPlayer = h.pending[0]; h.turnStartedAt = Date.now(); }
   }
   room.updatedAt = Date.now();
   return { ok: true, finished: room.hand.stage === 'complete', result: room.hand.result };
@@ -286,7 +295,7 @@ function publicRoom(room, playerId) {
     hand: h ? {
       handNo:h.handNo, stage:h.stage, community:h.community, pot:h.pot,
       currentBet:h.currentBet, minRaise:h.minRaise,
-      currentPlayer: room.seats.find(s=>s.id===h.currentPlayer)?.playerId || null,
+      currentPlayer: h.currentPlayer,
       myCards: me ? (me.holeCards||[]) : [],
       callAmount: me ? Math.max(0,h.currentBet-(me.streetBet||0)) : 0,
       myTurn: !!(me && h.currentPlayer===me.id),
