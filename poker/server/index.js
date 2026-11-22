@@ -336,12 +336,13 @@ app.post('/api/tables', auth, asyncRoute(async (req, res) => {
   send(res, { ok: true, table: publicTable(room, req.user.id), wallet: publicWallet(await walletFor(req.user.id)) }, 201);
 }));
 app.post('/api/tables/join', auth, asyncRoute(async (req, res) => {
-  const key = clean(req.body.code || req.body.id, 12).toUpperCase();
+  const key = clean(req.body.code || req.body.id, 64).toUpperCase();
   const room = await getRoom(key);
   if (!room || room.status === 'closed') return send(res, { error: 'Mesa não encontrada.' }, 404);
   if (room.mode !== 'free') return send(res, { error: 'Mesas premium estão temporariamente desativadas.' }, 403);
   if (room.status === 'playing') return send(res, { error: 'A mão já começou. Aguarde a próxima mesa.' }, 400);
   const buyIn = Math.floor(Number(req.body.buyIn || room.buyIn));
+  if (!Number.isInteger(buyIn) || buyIn < room.buyIn || buyIn > room.buyIn * 4) return send(res, { error: 'Entrada fora do limite desta mesa.' }, 400);
   if (room.seats.some(s=>s.playerId===req.user.id&&!s.left)) return send(res, { error: 'Você já está nesta mesa.' }, 409);
   if (room.seats.filter(s=>!s.left).length >= room.maxPlayers) return send(res, { error: 'Mesa cheia.' }, 400);
   const result = await withTx(async client => {
@@ -351,7 +352,7 @@ app.post('/api/tables/join', auth, asyncRoute(async (req, res) => {
     );
     if (!debit.rowCount) return { error: 'Saldo gratuito insuficiente.' };
     const joined = Game.addSeat(room, req.user.id, req.user.username, buyIn);
-    if (joined.error) return joined;
+    if (joined.error) throw new Error(joined.error);
     await ledger(client, req.user.id, 'free', -buyIn, 'entrada_mesa', room.id + ':' + room.handNo);
     await client.query(
       'UPDATE poker_tables SET state=$2::jsonb,updated_at=now() WHERE id=$1',
