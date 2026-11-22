@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#071b18">
+<title>Poker Arena BR</title>
+<style>
+:root{color-scheme:dark;--bg:#071512;--panel:#102722;--panel2:#16362e;--line:#285046;--gold:#e3bd69;--mint:#76d6ad;--muted:#9bb4aa;--red:#e77b74;--white:#f3f5ed}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#12342b 0,#071512 65%);font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;color:var(--white);min-height:100vh}
+button,input,select{font:inherit}button{border:0;cursor:pointer;color:var(--white);background:#24483d;border-radius:11px;padding:12px 16px;font-weight:700;transition:.15s}button:hover{filter:brightness(1.14);transform:translateY(-1px)}button:disabled{opacity:.4;cursor:not-allowed;transform:none}
+input{width:100%;background:#081b16;color:var(--white);border:1px solid var(--line);border-radius:10px;padding:12px;outline:none}input:focus{border-color:var(--mint)}
+.wrap{max-width:1220px;margin:auto;padding:22px}.top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}.brand{display:flex;align-items:center;gap:12px}.logo{width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,#e5c577,#a87a31);display:grid;place-items:center;color:#14271e;font-size:25px;box-shadow:0 5px 24px #0006}.brand h1{font-size:21px;margin:0;letter-spacing:.06em}.brand small{display:block;color:var(--muted);font-size:11px;letter-spacing:.18em;margin-top:3px}.wallet{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.balance{background:#102820;border:1px solid var(--line);border-radius:12px;padding:9px 13px;min-width:125px}.balance small{display:block;color:var(--muted);font-size:10px}.balance b{font-size:17px;color:var(--gold)}
+.layout{display:grid;grid-template-columns:310px 1fr;gap:18px}.panel{background:linear-gradient(160deg,#122d26,#0c201b);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:0 16px 40px #0003}.panel h2,.panel h3{margin:0 0 13px}.panel p{color:var(--muted);font-size:13px;line-height:1.5}.stack{display:grid;gap:12px}.field{display:grid;gap:6px}.field label{font-size:12px;color:var(--muted)}.btn-gold{background:linear-gradient(135deg,#f1d58e,#c99b4d);color:#1c2419}.btn-green{background:linear-gradient(135deg,#3c9f78,#247252)}.btn-quiet{background:#1a3b32;border:1px solid var(--line)}.btn-red{background:#713c3b}.row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.row>*{flex:1}.tiny{font-size:11px!important;color:var(--muted)}.divider{height:1px;background:var(--line);margin:15px 0}
+.tabs{display:flex;gap:8px;margin-bottom:16px}.tab{flex:1;background:#122c25;color:var(--muted);border:1px solid var(--line)}.tab.active{background:#24483d;color:var(--white);border-color:#558975}
+.table-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(225px,1fr));gap:12px}.table-card{background:#0b201a;border:1px solid var(--line);border-radius:15px;padding:15px;display:grid;gap:10px}.table-card h3{font-size:15px;margin:0}.table-meta{display:flex;justify-content:space-between;color:var(--muted);font-size:12px}.pill{display:inline-block;border-radius:99px;padding:4px 9px;background:#193c31;color:var(--mint);font-size:10px;font-weight:800;letter-spacing:.05em}
+.empty{border:1px dashed #315a4c;border-radius:15px;padding:27px;text-align:center;color:var(--muted);grid-column:1/-1}
+#auth{max-width:430px;margin:8vh auto;padding:24px}.auth-title{text-align:center;margin-bottom:22px}.auth-title .logo{margin:0 auto 12px;width:60px;height:60px}.auth-title h2{margin:0 0 6px}.auth-title p{margin:0;color:var(--muted);font-size:13px}.auth-toggle{display:flex;gap:8px;margin:14px 0}.auth-toggle button{flex:1}
+.table-view{display:none}.table-view.active{display:block}.table-head{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}.felt{margin:18px 0;background:radial-gradient(ellipse,#1e7652 0,#14543e 60%,#0b3529 100%);border:10px solid #5b3b24;outline:4px solid #a77a43;border-radius:44px;padding:25px;min-height:340px;box-shadow:inset 0 0 55px #04170e,0 20px 50px #0007}.seats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.seat{min-height:75px;border:1px solid #9cd3ad55;background:#09251dcc;border-radius:13px;padding:10px;display:flex;flex-direction:column;justify-content:center;gap:5px;position:relative}.seat.me{border:2px solid var(--gold);background:#123a2a}.seat.turn{box-shadow:0 0 0 2px var(--mint),0 0 20px #8cffbd77}.seat .name{font-weight:800;font-size:12px;overflow:hidden;text-overflow:ellipsis}.seat .chips{font-size:11px;color:#f5d88c}.seat .last{font-size:10px;color:#b7d2c1}.dealer{color:var(--gold);font-size:10px;margin-left:5px}.cards{display:flex;justify-content:center;gap:7px;min-height:70px;align-items:center;margin:14px 0}.card{width:44px;height:62px;background:#faf9f1;color:#19261f;border-radius:7px;box-shadow:0 4px 9px #0005;display:flex;flex-direction:column;justify-content:space-between;padding:5px;font-weight:900;font-size:15px}.card.red{color:#c33d42}.card.back{background:repeating-linear-gradient(45deg,#1a3d75,#1a3d75 5px,#f4e9d0 5px,#f4e9d0 7px);border:3px solid #f7f2dd}.card .suit{font-size:16px}.board{text-align:center}.pot{color:#ffdf8c;font-weight:900;font-size:17px;text-shadow:0 2px 5px #0008}.stage{font-size:11px;color:#d7e8da;text-transform:uppercase;letter-spacing:.16em;margin-top:3px}.actionbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.actionbar button{flex:1;min-width:100px}.actionbar input{max-width:140px}.history{background:#0b201a;border:1px solid var(--line);border-radius:12px;padding:12px;max-height:128px;overflow:auto}.history div{font-size:11px;color:var(--muted);padding:3px 0}.premium{border:1px solid #765d2d;background:linear-gradient(145deg,#2b2617,#17241c);border-radius:15px;padding:16px}.premium h3{color:#e7cb84}.disabled-note{background:#3b3320;color:#edd69c;padding:8px 10px;border-radius:9px;font-size:11px;display:inline-block}
+.notice{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#e9d5a2;color:#1d2b20;padding:12px 17px;border-radius:12px;font-weight:800;box-shadow:0 8px 35px #0007;z-index:20;display:none;max-width:90vw}
+@media(max-width:850px){.layout{grid-template-columns:1fr}.wrap{padding:13px}.top{align-items:flex-start;flex-direction:column}.wallet{width:100%}.balance{flex:1}.felt{padding:15px;border-width:7px;border-radius:26px}.seats{gap:7px}.seat{padding:7px;min-height:68px}.card{width:36px;height:52px}.table-head{align-items:flex-start}}
+@media(max-width:500px){.seats{grid-template-columns:repeat(2,minmax(0,1fr))}.brand h1{font-size:18px}.balance{min-width:100px}.actionbar button{min-width:0;padding:10px 8px;font-size:12px}.cards{gap:4px}.card{width:33px;height:48px;font-size:13px;padding:4px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><div class="logo">♠</div><div><h1>POKER ARENA BR</h1><small>TEXAS HOLD’EM · ONLINE</small></div></div>
+    <div class="wallet" id="wallet" style="display:none">
+      <div class="balance"><small>FICHAS GRATUITAS</small><b id="free-balance">5.000</b></div>
+      <div class="balance"><small>FICHAS PREMIUM</small><b id="paid-balance">0</b></div>
+      <button class="btn-quiet" id="daily">🎁 Bônus diário</button>
+      <button class="btn-quiet" id="logout">Sair</button>
+    </div>
+  </header>
+
+  <section id="auth" class="panel">
+    <div class="auth-title"><div class="logo">♠</div><h2>Entre no Poker Arena</h2><p>Crie sua conta e comece com 5.000 fichas gratuitas.</p></div>
+    <div class="auth-toggle"><button id="mode-login" class="tab active">Entrar</button><button id="mode-register" class="tab">Criar conta</button></div>
+    <form id="auth-form" class="stack">
+      <div class="field"><label>Nome de jogador</label><input id="username" minlength="3" maxlength="18" autocomplete="username" placeholder="Ex.: Guardiao123" required></div>
+      <div class="field"><label>Senha</label><input id="password" type="password" minlength="8" maxlength="128" autocomplete="current-password" placeholder="Mínimo de 8 caracteres" required></div>
+      <button class="btn-gold" id="auth-submit">Entrar</button>
+      <p class="tiny">Fichas gratuitas são virtuais e não podem ser convertidas em dinheiro.</p>
+    </form>
+  </section>
+
+  <main id="app" style="display:none">
+    <div class="table-view" id="table-view">
+      <section class="panel">
+        <div class="table-head"><div><span class="pill" id="table-status">MESA</span><h2 id="table-name" style="margin:8px 0 0">Mesa</h2><small class="tiny" id="table-meta"></small></div><div class="row" style="flex:0 0 auto"><button class="btn-quiet" id="copy-code">Copiar código</button><button class="btn-quiet" id="leave-table">Sair da mesa</button></div></div>
+        <div class="felt">
+          <div class="seats" id="seats"></div>
+          <div class="board"><div class="cards" id="community"></div><div class="pot" id="pot">Pote: 0</div><div class="stage" id="stage">Aguardando jogadores</div></div>
+          <div class="cards" id="my-cards"></div>
+        </div>
+        <div class="actionbar" id="actions"></div>
+        <p class="tiny" id="turn-info"></p>
+        <div class="divider"></div><b>Histórico da mesa</b><div class="history" id="history"></div>
+      </section>
+    </div>
+
+    <div class="layout" id="lobby-view">
+      <aside class="stack">
+        <section class="panel">
+          <h2>🏆 Saldo e bônus</h2><p>Você recebe fichas gratuitas para jogar. A cada 24 horas, pode recuperar até 1.000 fichas, respeitando o limite de 5.000.</p>
+          <button id="claim" class="btn-green" style="width:100%">Resgatar fichas grátis</button>
+        </section>
+        <section class="panel stack">
+          <h2>＋ Criar uma mesa</h2>
+          <div class="field"><label>Nome da mesa</label><input id="new-name" maxlength="28" value="Mesa dos amigos"></div>
+          <div class="field"><label>Entrada em fichas gratuitas</label><select id="new-buyin"><option value="200">200 fichas</option><option value="500" selected>500 fichas</option><option value="1000">1.000 fichas</option><option value="2000">2.000 fichas</option></select></div>
+          <div class="field"><label>Jogadores</label><select id="new-max"><option value="2">2 jogadores</option><option value="4">4 jogadores</option><option value="6" selected>6 jogadores</option></select></div>
+          <label class="tiny"><input id="new-private" type="checkbox" style="width:auto;vertical-align:middle"> Sala privada com código</label>
+          <button id="create-table" class="btn-gold">Criar mesa</button>
+        </section>
+        <section class="panel stack">
+          <h3>Entrar com código</h3><div class="field"><label>Código de 6 caracteres</label><input id="join-code" maxlength="6" placeholder="ABC123" autocomplete="off"></div><button id="join-code-btn" class="btn-quiet">Entrar na mesa</button>
+        </section>
+        <section class="premium">
+          <h3>♛ Salas premium</h3><p>Carteira premium separada e estrutura de comissão da plataforma prevista.</p><span class="disabled-note">Desativadas nesta versão</span><p class="tiny">Compras, apostas pagas e rake só serão liberados após validação jurídica e configuração do provedor de pagamento.</p>
+        </section>
+      </aside>
+      <section class="panel">
+        <div class="table-head"><div><h2>Mesas gratuitas</h2><p>Entre em uma mesa aberta ou crie uma sala privada para seus amigos.</p></div><button id="refresh" class="btn-quiet" style="flex:0 0 auto">↻ Atualizar</button></div>
+        <div class="table-list" id="tables"><div class="empty">Carregando mesas…</div></div>
+        <div class="divider"></div>
+        <h3>Como jogar</h3><p>Texas Hold’em No-Limit: cada jogador recebe duas cartas. Cinco cartas comunitárias são abertas em etapas. Faça a melhor mão de cinco cartas, aposte, pague, aumente ou desista. As fichas gratuitas não têm valor monetário.</p>
+      </section>
+    </div>
+  </main>
+</div>
+<div class="notice" id="notice"></div>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const fmt = n => Number(n||0).toLocaleString('pt-BR');
+let token = localStorage.getItem('poker_token') || '';
+let me = null, wallet = null, activeTable = null, authMode = 'login', poll = null, busy = false;
+const API = async (url, opts={}) => {
+  const response = await fetch(url, { ...opts, headers: { 'Content-Type':'application/json', ...(token?{Authorization:'Bearer '+token}:{}), ...(opts.headers||{}) } });
+  const data = await response.json().catch(()=>({error:'Resposta inválida do servidor.'}));
+  if (response.status === 401 && token) logout();
+  return data;
+};
+function notice(msg) {
+  const el=$('notice'); el.textContent=msg; el.style.display='block';
+  clearTimeout(notice.t); notice.t=setTimeout(()=>el.style.display='none',2800);
+}
+function setWallet(w) {
+  if (!w) return;
+  wallet=w; $('free-balance').textContent=fmt(w.freeTokens); $('paid-balance').textContent=fmt(w.paidTokens);
+}
+function showApp() { $('auth').style.display='none'; $('app').style.display='block'; $('wallet').style.display='flex'; }
+function logout() {
+  token='';me=null;activeTable=null;localStorage.removeItem('poker_token');clearInterval(poll);
+  $('app').style.display='none';$('wallet').style.display='none';$('auth').style.display='block';$('table-view').classList.remove('active');$('lobby-view').style.display='grid';
+}
+function setAuthMode(mode) {
+  authMode=mode;$('mode-login').classList.toggle('active',mode==='login');$('mode-register').classList.toggle('active',mode==='register');
+  $('auth-submit').textContent=mode==='login'?'Entrar':'Criar minha conta';
+}
+$('mode-login').onclick=()=>setAuthMode('login');
+$('mode-register').onclick=()=>setAuthMode('register');
+$('auth-form').onsubmit=async e=>{
+  e.preventDefault();$('auth-submit').disabled=true;
+  try {
+    const out=await API(authMode==='login'?'/api/login':'/api/register',{method:'POST',body:JSON.stringify({username:$('username').value,password:$('password').value})});
+    if(!out.ok){notice(out.error||'Não foi possível entrar.');return;}
+    token=out.token;localStorage.setItem('poker_token',token);me=out.user;setWallet(out.wallet);showApp();await loadTables();
+  } catch(err){notice('Falha de conexão. Tente novamente.');}
+  finally{$('auth-submit').disabled=false;}
+};
+async function init() {
+  if(!token)return;
+  const out=await API('/api/me');
+  if(!out.ok){logout();return;}
+  me=out.user;setWallet(out.wallet);showApp();await loadTables();
+}
+$('logout').onclick=logout;
+async function loadTables() {
+  const out=await API('/api/tables');
+  if(!out.ok){notice(out.error||'Falha ao carregar mesas.');return;}
+  const box=$('tables');
+  if(!out.tables.length){box.innerHTML='<div class="empty">Nenhuma mesa aberta agora.<br>Crie uma e convide seus amigos pelo código.</div>';return;}
+  box.innerHTML=out.tables.map(t=>'<article class="table-card"><div class="row"><h3>'+esc(t.name)+'</h3><span class="pill">'+(t.status==='playing'?'Jogando':'Aguardando')+'</span></div><div class="table-meta"><span>👥 '+t.players+'/'+t.maxPlayers+'</span><span>Entrada '+fmt(t.buyIn)+'</span></div><div class="table-meta"><span>Blinds '+esc(t.blinds)+'</span><span>Texas Hold’em</span></div><button class="btn-green" data-join="'+t.id+'">Entrar na mesa</button></article>').join('');
+  box.querySelectorAll('[data-join]').forEach(b=>b.onclick=()=>joinTable(b.dataset.join));
+}
+function esc(v){return String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+$('refresh').onclick=loadTables;
+$('create-table').onclick=async()=>{
+  const out=await API('/api/tables',{method:'POST',body:JSON.stringify({name:$('new-name').value,buyIn:Number($('new-buyin').value),maxPlayers:Number($('new-max').value),private:$('new-private').checked})});
+  if(!out.ok){notice(out.error||'Não foi possível criar a mesa.');return;}
+  setWallet(out.wallet);openTable(out.table);notice('Mesa criada! Compartilhe o código com seus amigos.');
+};
+$('join-code-btn').onclick=()=>joinTable($('join-code').value.trim().toUpperCase());
+async function joinTable(idOrCode) {
+  const out=await API('/api/tables/join',{method:'POST',body:JSON.stringify({code:idOrCode})});
+  if(!out.ok){notice(out.error||'Não foi possível entrar.');return;}
+  setWallet(out.wallet);openTable(out.table);
+}
+function openTable(table) {
+  activeTable=table.id;$('lobby-view').style.display='none';$('table-view').classList.add('active');renderTable(table);
+  clearInterval(poll);poll=setInterval(refreshTable,1100);
+}
+async function refreshTable() {
+  if(!activeTable||busy)return;busy=true;
+  try {
+    const out=await API('/api/tables/'+encodeURIComponent(activeTable));
+    if(!out.ok){notice(out.error||'Mesa indisponível.');closeTable();return;}
+    setWallet(out.wallet);renderTable(out.table);
+  } catch(e){} finally{busy=false;}
+}
+function cardHTML(card) {
+  if(!card)return '';
+  const red=card.suit==='♥'||card.suit==='♦';
+  return '<div class="card '+(red?'red':'')+'"><span>'+esc(card.rank)+'</span><span class="suit">'+esc(card.suit)+'</span></div>';
+}
+function renderTable(t) {
+  activeTable=t.id;$('table-name').textContent=t.name;$('table-meta').textContent='Código '+t.code+' · Entrada '+fmt(t.buyIn)+' · Blinds '+t.smallBlind+'/'+t.bigBlind;
+  $('table-status').textContent=t.status==='playing'?'EM JOGO':'AGUARDANDO';
+  const h=t.hand, players=t.players||[];
+  $('seats').innerHTML=players.map(p=>'<div class="seat '+(p.isMe?'me ':'')+(h&&h.currentPlayer===pId(p)?'turn':'')+'"><div class="name">'+(p.isMe?'★ ':'')+esc(p.username)+(p.isDealer?'<span class="dealer"> BOTÃO</span>':'')+'</div><div class="chips">🪙 '+fmt(p.stack)+'</div><div class="last">'+(p.folded?'Desistiu':p.allIn?'All-in':esc(p.lastAction||'Na mesa'))+(p.streetBet?' · '+fmt(p.streetBet)+' no pote':'')+'</div></div>').join('');
+  $('community').innerHTML=h&&h.community.length?h.community.map(cardHTML).join(''):'<span class="tiny">Cartas comunitárias</span>';
+  $('my-cards').innerHTML=h&&h.myCards.length?h.myCards.map(cardHTML).join(''):'';
+  $('pot').textContent='Pote: '+fmt(h?h.pot:0)+' fichas';
+  $('stage').textContent=h?(h.stage==='complete'?'Mão concluída':h.stage):'Aguardando jogadores';
+  $('history').innerHTML=(t.history||[]).map(x=>'<div>'+esc(x)+'</div>').join('');
+  const my=players.find(p=>p.isMe), myTurn=!!(h&&h.myTurn);
+  const action=$('actions');action.innerHTML='';
+  if(h&&h.stage==='complete'&&h.result) {
+    const names=(h.result.winners||[]).map(w=>w.username).join(', ');
+    $('turn-info').textContent=names?'Vencedor(es): '+names:'Mão encerrada.';
+  } else if(myTurn&&my) {
+    const call=h.callAmount||0, max=my.stack+(my.streetBet||0);
+    const checkCall=document.createElement('button');checkCall.className='btn-green';checkCall.textContent=call?'Pagar '+fmt(Math.min(call,my.stack)):'Mesa';
+    checkCall.onclick=()=>sendAction(call?'call':'check');action.append(checkCall);
+    const fold=document.createElement('button');fold.className='btn-red';fold.textContent='Desistir';fold.onclick=()=>sendAction('fold');action.append(fold);
+    if(my.stack>call+1) {
+      const min=Math.max(t.bigBlind,h.currentBet+h.minRaise);
+      const amount=document.createElement('input');amount.type='number';amount.min=min;amount.max=max;amount.step=1;amount.value=Math.min(max,min);amount.id='raise-amount';amount.title='Valor total da sua aposta nesta rodada';
+      action.append(amount);
+      const raise=document.createElement('button');raise.className='btn-gold';raise.textContent=call?'Aumentar':'Apostar';raise.onclick=()=>sendAction('raise',Number($('raise-amount').value));action.append(raise);
+    }
+    if(my.stack>0){const all=document.createElement('button');all.className='btn-quiet';all.textContent='All-in';all.onclick=()=>sendAction('allin');action.append(all);}
+    $('turn-info').textContent='É sua vez. '+(call?'Para continuar, pague '+fmt(call)+' fichas.':'Você pode passar, apostar ou desistir.');
+  } else {
+    const current=players.find(p=>p.id===t.currentPlayer);
+    $('turn-info').textContent=h&&h.stage!=='complete'?(current?'Vez de '+current.username+'.':'Aguardando jogada…'):'Aguardando outro jogador para iniciar.';
+    if(my&&my.stack===0&&t.status!=='playing') {
+      const rebuy=document.createElement('button');rebuy.className='btn-gold';rebuy.textContent='Recomprar '+fmt(t.buyIn);rebuy.onclick=rebuyAtTable;action.append(rebuy);
+    }
+  }
+}
+function pId(p){return p.id;}
+async function sendAction(type,amount) {
+  const out=await API('/api/tables/'+activeTable+'/action',{method:'POST',body:JSON.stringify({type,amount})});
+  if(!out.ok){notice(out.error||'Jogada não aceita.');return;}
+  renderTable(out.table);
+}
+async function rebuyAtTable() {
+  const out=await API('/api/tables/'+activeTable+'/rebuy',{method:'POST',body:JSON.stringify({})});
+  if(!out.ok){notice(out.error||'Não foi possível recomprar.');return;}
+  setWallet(out.wallet);renderTable(out.table);
+}
+$('leave-table').onclick=async()=>{
+  const out=await API('/api/tables/'+activeTable+'/leave',{method:'POST',body:JSON.stringify({})});
+  if(out.message)notice(out.message);else notice('Você saiu da mesa.');
+  if(!out.message)closeTable();
+};
+function closeTable() {clearInterval(poll);activeTable=null;$('table-view').classList.remove('active');$('lobby-view').style.display='grid';loadTables();}
+$('copy-code').onclick=async()=>{
+  const code=$('table-meta').textContent.match(/Código ([A-Z0-9]{6})/)?.[1];
+  if(!code)return;
+  try{await navigator.clipboard.writeText(code);notice('Código copiado: '+code);}catch(e){notice('Código da sala: '+code);}
+};
+async function claim() {
+  const out=await API('/api/wallet/claim',{method:'POST',body:JSON.stringify({})});
+  if(!out.ok){notice(out.error||'Bônus indisponível.');return;}
+  setWallet(out.wallet);notice('Você recebeu '+fmt(out.added)+' fichas gratuitas!');
+}
+$('claim').onclick=claim;$('daily').onclick=claim;
+init().catch(()=>logout());
+})();
+</script>
+</body>
+</html>
