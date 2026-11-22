@@ -290,7 +290,7 @@ function publicRoom(room, playerId) {
       id:s.id, username:s.username, stack:s.stack, streetBet:s.streetBet||0,
       folded:!!s.folded, allIn:!!s.allIn, lastAction:s.lastAction||'',
       isMe:s.playerId===playerId, isDealer:s.id===room.dealerId,
-      cards: (!h || h.stage==='complete' || s.playerId===playerId) ? (s.holeCards||[]) : []
+      cards: (!h || (h.stage==='complete' && !s.folded) || s.playerId===playerId) ? (s.holeCards||[]) : []
     })),
     hand: h ? {
       handNo:h.handNo, stage:h.stage, community:h.community, pot:h.pot,
