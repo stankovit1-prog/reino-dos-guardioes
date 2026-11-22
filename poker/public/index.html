@@ -126,6 +126,87 @@ input{width:100%;background:#081b16;color:var(--white);border:1px solid var(--li
  .seat-pos-1{left:18%;bottom:6%}.seat-pos-5{right:18%;bottom:6%}
  .board{width:48%}
 }
+
+/* Ajuste visual: mesa compacta e jogadores sem cartões ao redor */
+.felt{
+  width:min(100%, 860px) !important;
+  aspect-ratio:2/1 !important;
+  height:auto !important;
+  min-height:340px !important;
+  max-height:430px !important;
+  border-radius:34px !important;
+  margin:18px auto 20px !important;
+}
+.felt:before{border-radius:25px !important}
+.seat{
+  width:96px !important;
+  padding:0 !important;
+  background:transparent !important;
+  border:0 !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+  min-height:0 !important;
+  gap:1px !important;
+}
+.seat.me,.seat.turn{
+  background:transparent !important;
+  border:0 !important;
+  box-shadow:none !important;
+}
+.seat.turn .seat-avatar{
+  filter:drop-shadow(0 0 5px #9cffc7) drop-shadow(0 2px 3px #00160f88) !important;
+}
+.seat.me .name,.seat.turn .name{color:#f6df9d !important}
+.seat .name{
+  font-size:9px !important;
+  line-height:1.1 !important;
+  text-shadow:0 1px 4px #00180f,0 0 5px #00180f !important;
+}
+.seat .chips{
+  font-size:8px !important;
+  text-shadow:0 1px 4px #00180f,0 0 5px #00180f !important;
+}
+.seat .last{
+  font-size:7px !important;
+  text-shadow:0 1px 4px #00180f,0 0 5px #00180f !important;
+}
+.seat-avatar{width:42px !important;height:37px !important}
+.player-visual{min-height:38px !important;gap:1px !important}
+.hole-card{width:14px !important;height:21px !important;font-size:6px !important;padding:2px !important;box-shadow:0 1px 3px #00160f88 !important}
+.hole-card .suit{font-size:7px !important}
+.seat-pos-0{left:50% !important;bottom:1% !important;transform:translateX(-50%) !important}
+.seat-pos-1{left:17% !important;bottom:7% !important;transform:translateX(-50%) !important}
+.seat-pos-2{left:1% !important;top:28% !important;transform:translateY(-50%) !important}
+.seat-pos-3{left:50% !important;top:0% !important;transform:translateX(-50%) !important}
+.seat-pos-4{right:1% !important;top:28% !important;transform:translateY(-50%) !important}
+.seat-pos-5{right:17% !important;bottom:7% !important;transform:translateX(50%) !important}
+@media (max-width:850px){
+  .felt{width:min(100%,760px) !important;min-height:300px !important;max-height:380px !important}
+  .seat{width:86px !important}
+  .seat-avatar{width:38px !important;height:34px !important}
+  .player-visual{min-height:34px !important}
+  .seat-pos-1{left:17% !important;bottom:7% !important}
+  .seat-pos-5{right:17% !important;bottom:7% !important}
+}
+@media (max-width:560px){
+  .felt{width:min(100%,720px) !important;height:clamp(255px,56svh,330px) !important;min-height:255px !important;max-height:330px !important;aspect-ratio:auto !important;border-radius:25px !important;margin:12px auto 14px !important}
+  .felt:before{border-radius:17px !important}
+  .seat{width:78px !important}
+  .seat .name{font-size:8px !important}
+  .seat .chips{font-size:7px !important}
+  .seat .last{font-size:6px !important}
+  .seat-avatar{width:34px !important;height:30px !important}
+  .player-visual{min-height:30px !important}
+  .hole-card{width:12px !important;height:18px !important;font-size:5px !important}
+  .hole-card .suit{font-size:6px !important}
+}
+@media (orientation:landscape) and (max-height:650px) and (pointer:coarse){
+  .felt{width:min(100%,820px) !important;height:clamp(245px,52svh,320px) !important;min-height:245px !important;max-height:320px !important;aspect-ratio:auto !important;border-radius:26px !important;margin:8px auto 10px !important}
+  .felt:before{border-radius:18px !important}
+  .seat{width:84px !important}
+  .seat-avatar{width:36px !important;height:32px !important}
+  .player-visual{min-height:32px !important}
+}
 </style>
 </head>
 <body>
